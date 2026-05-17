@@ -9,6 +9,7 @@ dist/
 *.sql.gz
 *.dump
 /data/
+/.data/
 seed/local/
 *.xlsx
 *.xls

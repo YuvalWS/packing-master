@@ -15,6 +15,7 @@ dist/
 *.sql.gz
 *.dump
 /data/
+/.data/
 
 # Personal seed data (local-only)
 seed/local/

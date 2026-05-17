@@ -43,7 +43,7 @@ docker compose run --rm app npm run db:migrate:test
 - `seed/sample/` — generic placeholder catalog (committed). Useful for fresh-clone bootstraps and documenting YAML shape.
 - `seed/local/` — your personal catalog (gitignored). Produced by `extract:excel` or hand-edited.
 - `tests/fixtures/` — pure mock data used by unit and integration tests.
-- Source spreadsheet — stays outside the repo. Mount it into the container and set `PACKING_EXCEL_PATH`.
+- Source spreadsheet — stays outside the repo. Drop it into `./.data/source.xlsx` (gitignored) and `PACKING_EXCEL_PATH=/data/source.xlsx` will reach it from the container.
 
 ## Testing
 
