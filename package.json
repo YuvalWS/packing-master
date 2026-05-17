@@ -1,0 +1,44 @@
+{
+  "name": "packing-master",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "db:migrate": "tsx src/lib/db/migrate.ts dev",
+    "db:migrate:test": "tsx src/lib/db/migrate.ts test",
+    "seed:sample": "tsx src/lib/seed/cli.ts dev seed/sample",
+    "seed:local": "tsx src/lib/seed/cli.ts dev seed/local",
+    "seed:test": "tsx src/lib/seed/cli.ts test tests/fixtures",
+    "extract:excel": "tsx src/lib/seed/extract-from-excel.ts"
+  },
+  "dependencies": {
+    "@hebcal/core": "^5.4.0",
+    "@sveltejs/adapter-node": "^5.2.0",
+    "@sveltejs/kit": "^2.5.0",
+    "js-yaml": "^4.1.0",
+    "mysql2": "^3.11.0",
+    "svelte": "^5.0.0",
+    "umzug": "^3.8.0",
+    "xlsx": "^0.18.5",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.12.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "svelte-check": "^4.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0",
+    "vite": "^5.4.0",
+    "vitest": "^2.1.0"
+  }
+}
