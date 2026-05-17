@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Build output
+.svelte-kit/
+build/
+dist/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database
+*.sql.gz
+*.dump
+/data/
+
+# Personal seed data (local-only)
+seed/local/
+
+# Source data (kept outside repo)
+*.xlsx
+*.xls
+
+# Test artifacts
+coverage/
+playwright-report/
+test-results/
+
+# Design docs (gitignored until scrubbed of personal data)
+CLAUDE.md
+DESIGN.md
+context.md
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+*.log
