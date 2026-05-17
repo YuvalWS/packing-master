@@ -125,7 +125,7 @@ describe('evaluate — deep nesting', () => {
         { or: [{ not: { and: ['x', 'y'] } }, 'z'] },
         { any_param: ['a', 'b'] }
       ]
-    } as const;
+    };
     // active a,z but neither x nor y → not(and(x,y)) = true → or(true,z)=true → and(true, any[a,b])=true (a in)
     expect(evaluate(c, ctx(['a', 'z']))).toBe(true);
     // active x,y,a → not(and(x,y))=false, z not active → or=false → and=false
