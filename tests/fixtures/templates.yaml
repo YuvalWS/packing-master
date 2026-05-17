@@ -1,0 +1,12 @@
+templates:
+  - id: tpl_minimal
+    display_name: Minimal
+    default_parameters:
+      - accom_a
+
+  - id: tpl_full
+    display_name: Full
+    default_parameters:
+      - accom_b
+      - env_a
+      - plan_a

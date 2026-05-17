@@ -1,0 +1,105 @@
+items:
+  # Always present.
+  - id: item_always
+    display_name: Always
+    include_when: true
+    quantity:
+      fixed: 1
+
+  # Per-day clothing.
+  - id: item_per_day
+    display_name: Per-day
+    include_when: true
+    quantity:
+      per_day: 1
+
+  # Every other day with a minimum of 1.
+  - id: item_per_two_days
+    display_name: Per-two-days
+    include_when: true
+    quantity:
+      per_n_days:
+        n: 2
+        min: 1
+
+  # Per shabbat present in the trip.
+  - id: item_per_shabbat
+    display_name: Per-shabbat
+    include_when:
+      includes_shabbat: true
+    quantity:
+      per_shabbat: 1
+
+  # Single string condition.
+  - id: item_when_env_a
+    display_name: When env_a
+    include_when: env_a
+    quantity:
+      fixed: 1
+
+  # all_params composition.
+  - id: item_when_accom_a_and_plan_a
+    display_name: When accom_a AND plan_a
+    include_when:
+      all_params:
+        - accom_a
+        - plan_a
+    quantity:
+      fixed: 1
+
+  # any_param composition.
+  - id: item_when_env_a_or_env_b
+    display_name: When env_a OR env_b
+    include_when:
+      any_param:
+        - env_a
+        - env_b
+    quantity:
+      fixed: 1
+
+  # not negation.
+  - id: item_when_not_plan_b
+    display_name: When NOT plan_b
+    include_when:
+      not: plan_b
+    quantity:
+      fixed: 1
+
+  # Nested and/or.
+  - id: item_complex_nested
+    display_name: Complex nested
+    include_when:
+      and:
+        - or:
+            - env_a
+            - env_b
+        - any_param:
+            - plan_a
+            - plan_b
+    quantity:
+      days_plus:
+        add: 1
+        min: 2
+
+  # Optional item.
+  - id: item_optional
+    display_name: Optional
+    is_optional: true
+    include_when: env_b
+    quantity:
+      fixed: 1
+
+  # Kit.
+  - id: item_kit
+    display_name: Kit
+    is_kit: true
+    kit_contents:
+      - id: kit_comp_one
+        display_name: Comp One
+        default_count: 1
+      - id: kit_comp_two
+        display_name: Comp Two
+        default_count: 2
+    include_when: true
+    quantity:
+      fixed: 1
