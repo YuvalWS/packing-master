@@ -1,0 +1,49 @@
+# Generic placeholder parameters. Demonstrates file shape only.
+# Real personal parameters live in seed/local/ (gitignored).
+
+parameters:
+  # Accommodation — exactly one is active per trip.
+  - id: accom_a
+    display_name: Accommodation A
+    category: accommodation
+    is_singleton: true
+    sort_order: 10
+  - id: accom_b
+    display_name: Accommodation B
+    category: accommodation
+    is_singleton: true
+    sort_order: 20
+
+  # Environment — multi-select.
+  - id: env_a
+    display_name: Environment A
+    category: environment
+    sort_order: 10
+  - id: env_b
+    display_name: Environment B
+    category: environment
+    sort_order: 20
+
+  # Day plans — multi-select.
+  - id: plan_a
+    display_name: Plan A
+    category: day_plans
+    sort_order: 10
+  - id: plan_b
+    display_name: Plan B
+    category: day_plans
+    sort_order: 20
+
+  # Derived — auto-applied by the engine, not user-toggled.
+  - id: derived_has_shabbat
+    display_name: Has Shabbat
+    category: derived
+    is_derived: true
+  - id: derived_long_trip
+    display_name: Long Trip
+    category: derived
+    is_derived: true
+  - id: derived_short_trip
+    display_name: Short Trip
+    category: derived
+    is_derived: true

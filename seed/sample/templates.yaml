@@ -1,0 +1,16 @@
+# Generic placeholder templates.
+
+templates:
+  - id: tpl_minimal
+    display_name: Minimal Template
+    default_parameters:
+      - accom_a
+    sort_order: 10
+
+  - id: tpl_with_env_and_plan
+    display_name: Template with environment + plan
+    default_parameters:
+      - accom_b
+      - env_a
+      - plan_a
+    sort_order: 20
