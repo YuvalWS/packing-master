@@ -1,0 +1,66 @@
+import type { Condition } from '../schemas/condition.js';
+
+export interface EvalContext {
+  activeParams: ReadonlySet<string>;
+  params: Readonly<Record<string, unknown>>;
+}
+
+function readPath(obj: Record<string, unknown>, path: string): unknown {
+  if (path in obj) return obj[path];
+  // dotted path support: "trip.days" → obj.trip.days
+  const parts = path.split('.');
+  let cur: unknown = obj;
+  for (const p of parts) {
+    if (cur === null || cur === undefined || typeof cur !== 'object') return undefined;
+    cur = (cur as Record<string, unknown>)[p];
+  }
+  return cur;
+}
+
+export function evaluate(condition: Condition, ctx: EvalContext): boolean {
+  if (condition === true) return true;
+
+  if (typeof condition === 'string') {
+    return ctx.activeParams.has(condition);
+  }
+
+  if ('and' in condition) {
+    return condition.and.every((c) => evaluate(c, ctx));
+  }
+
+  if ('or' in condition) {
+    return condition.or.some((c) => evaluate(c, ctx));
+  }
+
+  if ('not' in condition) {
+    return !evaluate(condition.not, ctx);
+  }
+
+  if ('eq' in condition) {
+    const [path, expected] = condition.eq;
+    const actual = readPath(ctx.params, path);
+    return actual === expected;
+  }
+
+  if ('gte' in condition) {
+    const [path, expected] = condition.gte;
+    const actual = readPath(ctx.params, path);
+    return typeof actual === 'number' && actual >= expected;
+  }
+
+  if ('any_param' in condition) {
+    return condition.any_param.some((id) => ctx.activeParams.has(id));
+  }
+
+  if ('all_params' in condition) {
+    return condition.all_params.every((id) => ctx.activeParams.has(id));
+  }
+
+  if ('includes_shabbat' in condition) {
+    return ctx.activeParams.has('derived_has_shabbat');
+  }
+
+  // Exhaustiveness guard: TypeScript can't see the path with `in`-narrowing
+  // perfectly, but at runtime we want to be explicit.
+  throw new Error(`unknown condition operator: ${JSON.stringify(condition)}`);
+}
