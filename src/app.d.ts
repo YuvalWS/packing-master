@@ -1,3 +1,5 @@
+import type { Pool } from 'mysql2/promise';
+
 declare global {
   namespace App {
     interface Error {
@@ -5,6 +7,9 @@ declare global {
       details?: unknown;
       issues?: unknown;
       message?: string;
+    }
+    interface Locals {
+      pool: Pool;
     }
   }
 }
