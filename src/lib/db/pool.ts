@@ -37,3 +37,20 @@ export function createPool(target: PoolTarget): mysql.Pool {
     namedPlaceholders: true
   });
 }
+
+const pools = new Map<PoolTarget, mysql.Pool>();
+
+export function getPool(target: PoolTarget): mysql.Pool {
+  let pool = pools.get(target);
+  if (!pool) {
+    pool = createPool(target);
+    pools.set(target, pool);
+  }
+  return pool;
+}
+
+export async function closeAllPools(): Promise<void> {
+  const all = [...pools.values()];
+  pools.clear();
+  await Promise.all(all.map((p) => p.end()));
+}
