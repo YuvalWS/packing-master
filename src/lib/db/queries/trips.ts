@@ -18,6 +18,10 @@ export interface TripRow {
   updated_at: Date;
 }
 
+export interface TripRowWithItemCount extends TripRow {
+  item_count: number;
+}
+
 export interface TripCreateInput {
   name?: string | null;
   template_id?: string | null;
@@ -66,11 +70,20 @@ function mapRow(r: RowDataPacket): TripRow {
 const SELECT_COLS =
   'id, name, template_id, start_date, end_date, destination, context, travelers, created_at, updated_at';
 
-export async function listAll(pool: Pool): Promise<TripRow[]> {
+export async function listAll(pool: Pool): Promise<TripRowWithItemCount[]> {
   const [rows] = await pool.query<RowDataPacket[]>(
-    `SELECT ${SELECT_COLS} FROM trips ORDER BY start_date DESC, id DESC`
+    `SELECT ${SELECT_COLS.split(', ').map((c) => `t.${c}`).join(', ')},
+            COALESCE(c.item_count, 0) AS item_count
+     FROM trips t
+     LEFT JOIN (
+       SELECT trip_id, COUNT(*) AS item_count FROM trip_items GROUP BY trip_id
+     ) c ON c.trip_id = t.id
+     ORDER BY t.start_date DESC, t.id DESC`
   );
-  return rows.map(mapRow);
+  return rows.map((r) => ({
+    ...mapRow(r),
+    item_count: Number(r.item_count)
+  }));
 }
 
 export async function getById(pool: Pool, id: number): Promise<TripRow | null> {

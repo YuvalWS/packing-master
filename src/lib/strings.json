@@ -10,6 +10,21 @@
   "a11y": {
     "open_menu": "פתח תפריט",
     "close_menu": "סגור תפריט",
-    "settings": "הגדרות"
+    "settings": "הגדרות",
+    "create_trip": "צור טיול חדש"
+  },
+  "trips_list": {
+    "empty_title": "אין טיולים עדיין",
+    "empty_message": "צור את הטיול הראשון שלך כדי להתחיל.",
+    "create_cta": "צור טיול",
+    "items_count_one": "פריט אחד",
+    "items_count_many": "{count} פריטים",
+    "no_name_fallback": "{days} ימים",
+    "and_more": "+{count}"
+  },
+  "common": {
+    "day_one": "יום",
+    "day_many": "ימים",
+    "loading": "טוען…"
   }
 }
