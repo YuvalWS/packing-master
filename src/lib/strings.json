@@ -79,5 +79,14 @@
     "checked_to_bottom": "מסומנים בתחתית",
     "no_bag": "ללא תיק",
     "bag_main": "תיק ראשי"
+  },
+  "settings": {
+    "title": "הגדרות טיול",
+    "saved_toast": "הרשימה עודכנה",
+    "saved_with_changes": "הרשימה עודכנה · נוספו {added} · שונו {updated}",
+    "save_failed": "שמירה נכשלה. נסה שוב.",
+    "delete_trip": "מחק טיול",
+    "delete_confirm": "למחוק את הטיול?",
+    "deleted_toast": "הטיול נמחק"
   }
 }

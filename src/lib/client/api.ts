@@ -107,6 +107,47 @@ export interface PatchTripItemBody {
   notes?: string | null;
 }
 
+export interface PatchTripBody {
+  name?: string | null;
+  template_id?: string | null;
+  start_date?: string;
+  end_date?: string;
+  destination?: string | null;
+  parameters?: string[];
+  extras?: Record<string, unknown>;
+}
+
+export interface PatchTripDiffAdded {
+  itemId: string;
+  count: number;
+}
+
+export interface PatchTripDiffUpdated {
+  itemId: string;
+  newCount: number;
+  countPreserved: boolean;
+}
+
+export interface PatchTripDiffRemoved {
+  row_id: number | null;
+  item_id: string;
+  display_name: string;
+  count: number;
+}
+
+export interface PatchTripResponse {
+  trip: TripRow;
+  diff: {
+    added: PatchTripDiffAdded[];
+    updated: PatchTripDiffUpdated[];
+    to_be_removed: PatchTripDiffRemoved[];
+  };
+}
+
+export interface RegenerateBody {
+  remove_item_keys: ({ item_id: string } | { row_id: number })[];
+}
+
 export interface DbTripItemRow {
   id: number;
   trip_id: number;
@@ -124,6 +165,9 @@ export interface Api {
   listTrips(): Promise<{ trips: TripRowWithItemCount[] }>;
   getTrip(id: number): Promise<GetTripResponse>;
   createTrip(body: CreateTripBody): Promise<CreateTripResponse>;
+  patchTrip(id: number, body: PatchTripBody): Promise<PatchTripResponse>;
+  deleteTrip(id: number): Promise<{ deleted: true }>;
+  regenerateTrip(id: number, body: RegenerateBody): Promise<{ deleted: number }>;
   patchTripItem(
     tripId: number,
     key: string | number,
@@ -146,6 +190,12 @@ export function makeApi(fetcher: Fetcher = fetch): Api {
     getTrip: (id) => request<GetTripResponse>(fetcher, 'GET', `/api/trips/${id}`),
     createTrip: (body) =>
       request<CreateTripResponse>(fetcher, 'POST', '/api/trips', body),
+    patchTrip: (id, body) =>
+      request<PatchTripResponse>(fetcher, 'PATCH', `/api/trips/${id}`, body),
+    deleteTrip: (id) =>
+      request<{ deleted: true }>(fetcher, 'DELETE', `/api/trips/${id}`),
+    regenerateTrip: (id, body) =>
+      request<{ deleted: number }>(fetcher, 'POST', `/api/trips/${id}/regenerate`, body),
     patchTripItem: (tripId, key, body) =>
       request<{ item: DbTripItemRow }>(
         fetcher,
