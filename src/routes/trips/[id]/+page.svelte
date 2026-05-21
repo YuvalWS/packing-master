@@ -9,8 +9,11 @@
   import ParamChip from '$lib/components/ParamChip.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import Toast from '$lib/components/Toast.svelte';
+  import BagFilterToggle from '$lib/components/BagFilterToggle.svelte';
+  import CheckedToBottomToggle from '$lib/components/CheckedToBottomToggle.svelte';
   import type { EnrichedItem, KitComponentRow as KitComponentRowState } from '$lib/client/api.js';
   import { makeApi } from '$lib/client/api.js';
+  import { loadPrefs, savePrefs, type ViewMode } from '$lib/client/view-prefs.js';
   import strings from '$lib/strings.js';
 
   interface Props {
@@ -26,6 +29,24 @@
   let toastMsg = $state<string | null>(null);
   let toastTone = $state<'info' | 'success' | 'danger'>('info');
   let expandedKits = $state<Set<number>>(new Set());
+  let viewMode = $state<ViewMode>('category');
+  let checkedToBottom = $state(false);
+
+  $effect(() => {
+    const prefs = loadPrefs(data.trip.id);
+    viewMode = prefs.mode;
+    checkedToBottom = prefs.checkedToBottom;
+  });
+
+  function setViewMode(next: ViewMode) {
+    viewMode = next;
+    savePrefs(data.trip.id, { mode: viewMode, checkedToBottom });
+  }
+
+  function setCheckedToBottom(next: boolean) {
+    checkedToBottom = next;
+    savePrefs(data.trip.id, { mode: viewMode, checkedToBottom });
+  }
 
   $effect(() => {
     items = data.items;
@@ -67,19 +88,41 @@
     return { totalRequired, checkedRequired, uncheckedOptional };
   });
 
-  const groupedByCategory = $derived.by(() => {
+  const grouped = $derived.by(() => {
     const groups = new Map<string, EnrichedItem[]>();
     for (const it of items) {
-      const key = it.category ?? '__';
+      const key = groupKey(it);
       const list = groups.get(key) ?? [];
       list.push(it);
       groups.set(key, list);
     }
     for (const list of groups.values()) {
-      list.sort((a, b) => a.display_name.localeCompare(b.display_name));
+      list.sort((a, b) => {
+        if (checkedToBottom && a.is_checked !== b.is_checked) {
+          return a.is_checked ? 1 : -1;
+        }
+        return a.display_name.localeCompare(b.display_name);
+      });
     }
     return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
   });
+
+  function groupKey(it: EnrichedItem): string {
+    if (viewMode === 'bag') {
+      return it.default_bag ?? '__no_bag';
+    }
+    return it.category ?? '__no_category';
+  }
+
+  function groupLabel(rawKey: string): string {
+    if (viewMode === 'bag') {
+      if (rawKey === '__no_bag') return strings.view.no_bag;
+      if (rawKey === 'main_bag') return strings.view.bag_main;
+      return rawKey;
+    }
+    if (rawKey === '__no_category') return strings.packing_list.category_uncategorized;
+    return rawKey;
+  }
 
   function showToast(msg: string, tone: 'info' | 'success' | 'danger' = 'info') {
     toastTone = tone;
@@ -170,6 +213,11 @@
     totalRequired={stats.totalRequired}
     uncheckedOptional={stats.uncheckedOptional}
   />
+
+  <div class="view-controls">
+    <BagFilterToggle mode={viewMode} onChange={setViewMode} />
+    <CheckedToBottomToggle checked={checkedToBottom} onChange={setCheckedToBottom} />
+  </div>
 </header>
 
 {#if items.length === 0}
@@ -186,11 +234,8 @@
   </EmptyState>
 {:else}
   <div class="groups">
-    {#each groupedByCategory as [category, rows] (category)}
-      <CategoryGroup
-        title={category === '__' ? strings.packing_list.category_uncategorized : category}
-        count={rows.length}
-      >
+    {#each grouped as [rawKey, rows] (rawKey)}
+      <CategoryGroup title={groupLabel(rawKey)} count={rows.length}>
         {#each rows as item (item.row_id)}
           {@const expanded = expandedKits.has(item.row_id)}
           {@const partial = kitPartial(item)}
@@ -301,5 +346,14 @@
     flex-direction: column;
     gap: var(--space-1);
     padding-block-start: var(--space-1);
+  }
+
+  .view-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    padding-block-start: var(--space-2);
   }
 </style>

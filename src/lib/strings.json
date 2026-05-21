@@ -72,5 +72,12 @@
     "increment": "הוסף",
     "decrement": "הפחת",
     "row_menu": "פעולות נוספות"
+  },
+  "view": {
+    "by_category": "לפי קטגוריה",
+    "by_bag": "לפי תיק",
+    "checked_to_bottom": "מסומנים בתחתית",
+    "no_bag": "ללא תיק",
+    "bag_main": "תיק ראשי"
   }
 }
