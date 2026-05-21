@@ -1,0 +1,70 @@
+@font-face {
+  font-family: 'Heebo';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/heebo-regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Heebo';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/heebo-700.woff2') format('woff2');
+}
+
+:root {
+  --font-sans: 'Heebo', 'Assistant', system-ui, -apple-system, sans-serif;
+
+  --fs-meta: 14px;
+  --fs-body: 16px;
+  --fs-row: 18px;
+  --fs-title: 24px;
+  --lh-base: 1.5;
+
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-text: #111827;
+  --color-text-muted: #6b7280;
+  --color-border: #e5e7eb;
+  --color-primary: #2563eb;
+  --color-primary-soft: #dbeafe;
+  --color-success: #16a34a;
+  --color-success-soft: #dcfce7;
+  --color-warning: #d97706;
+  --color-warning-soft: #fef3c7;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fee2e2;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.04), 0 1px 1px rgba(17, 24, 39, 0.06);
+  --shadow-md: 0 4px 12px rgba(17, 24, 39, 0.08);
+  --shadow-lg: 0 10px 30px rgba(17, 24, 39, 0.12);
+
+  --layout-max-width: 720px;
+  --topbar-height: 56px;
+  --fab-clearance: 96px;
+  --drawer-width: 280px;
+
+  --z-content: 0;
+  --z-topbar: 10;
+  --z-fab: 20;
+  --z-drawer-backdrop: 30;
+  --z-drawer: 31;
+  --z-toast: 40;
+  --z-modal-backdrop: 50;
+  --z-modal: 51;
+}
