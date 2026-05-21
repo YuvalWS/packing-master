@@ -55,5 +55,22 @@
     "day_plans": "פעילויות",
     "derived": "אוטומטי",
     "misc": "שונות"
+  },
+  "packing_list": {
+    "empty_title": "אין פריטים",
+    "empty_message": "בדוק את ההגדרות של הטיול.",
+    "settings_cta": "פתח הגדרות",
+    "progress_label": "סומנו",
+    "optional_suffix": "(+{count} רשות)",
+    "manual_tag": "ידני",
+    "optional_tag": "רשות",
+    "category_uncategorized": "כללי",
+    "save_failed": "שמירה נכשלה. נסה שוב."
+  },
+  "a11y_row": {
+    "toggle_check": "סמן את {name}",
+    "increment": "הוסף",
+    "decrement": "הפחת",
+    "row_menu": "פעולות נוספות"
   }
 }

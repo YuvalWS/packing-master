@@ -64,10 +64,64 @@ export interface CreateTripResponse {
   derived: string[];
 }
 
+export interface EnrichedItem {
+  row_id: number;
+  item_id: string | null;
+  display_name: string;
+  category: string | null;
+  default_bag: string | null;
+  is_kit: boolean;
+  is_optional: boolean;
+  count: number;
+  is_checked: boolean;
+  is_manual: boolean;
+  bag_distribution: Record<string, unknown> | null;
+  notes: string | null;
+  count_was_edited: boolean;
+}
+
+export interface KitComponentRow {
+  trip_id: number;
+  kit_item_id: string;
+  component_id: string;
+  is_checked: boolean;
+}
+
+export interface GetTripResponse {
+  trip: TripRow;
+  items: EnrichedItem[];
+  kit_components: KitComponentRow[];
+}
+
+export interface PatchTripItemBody {
+  count?: number;
+  is_checked?: boolean;
+  bag_distribution?: Record<string, unknown> | null;
+  notes?: string | null;
+}
+
+export interface DbTripItemRow {
+  id: number;
+  trip_id: number;
+  item_id: string | null;
+  display_name_override: string | null;
+  count: number;
+  is_checked: boolean;
+  is_manual: boolean;
+  bag_distribution: Record<string, unknown> | null;
+  notes: string | null;
+  count_was_edited: boolean;
+}
+
 export interface Api {
   listTrips(): Promise<{ trips: TripRowWithItemCount[] }>;
-  getTrip(id: number): Promise<unknown>;
+  getTrip(id: number): Promise<GetTripResponse>;
   createTrip(body: CreateTripBody): Promise<CreateTripResponse>;
+  patchTripItem(
+    tripId: number,
+    key: string | number,
+    body: PatchTripItemBody
+  ): Promise<{ item: DbTripItemRow }>;
   listParameters(): Promise<{ parameters: Parameter[] }>;
   listTemplates(): Promise<{ templates: Template[] }>;
   listItems(): Promise<{ items: Item[] }>;
@@ -77,9 +131,16 @@ export function makeApi(fetcher: Fetcher = fetch): Api {
   return {
     listTrips: () =>
       request<{ trips: TripRowWithItemCount[] }>(fetcher, 'GET', '/api/trips'),
-    getTrip: (id) => request<unknown>(fetcher, 'GET', `/api/trips/${id}`),
+    getTrip: (id) => request<GetTripResponse>(fetcher, 'GET', `/api/trips/${id}`),
     createTrip: (body) =>
       request<CreateTripResponse>(fetcher, 'POST', '/api/trips', body),
+    patchTripItem: (tripId, key, body) =>
+      request<{ item: DbTripItemRow }>(
+        fetcher,
+        'PATCH',
+        `/api/trips/${tripId}/items/${encodeURIComponent(String(key))}`,
+        body
+      ),
     listParameters: () =>
       request<{ parameters: Parameter[] }>(fetcher, 'GET', '/api/parameters'),
     listTemplates: () =>
