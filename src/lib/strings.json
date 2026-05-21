@@ -25,6 +25,35 @@
   "common": {
     "day_one": "יום",
     "day_many": "ימים",
-    "loading": "טוען…"
+    "loading": "טוען…",
+    "back": "חזרה",
+    "next": "המשך",
+    "save": "שמור",
+    "cancel": "בטל"
+  },
+  "new_trip": {
+    "step_template_title": "בחר תבנית",
+    "step_details_title": "פרטי הטיול",
+    "no_template": "ללא תבנית",
+    "label_name": "שם הטיול",
+    "label_name_placeholder": "אופציונלי",
+    "label_start": "תאריך התחלה",
+    "label_end": "תאריך סיום",
+    "label_destination": "יעד",
+    "label_destination_placeholder": "אופציונלי",
+    "section_accommodation": "לינה",
+    "section_environment": "סביבה",
+    "section_day_plans": "פעילויות",
+    "submit": "צור טיול",
+    "error_dates": "תאריך הסיום חייב להיות אחרי תאריך ההתחלה",
+    "error_no_accommodation": "יש לבחור סוג לינה",
+    "error_generic": "שמירה נכשלה. נסה שוב."
+  },
+  "parameter_category": {
+    "accommodation": "לינה",
+    "environment": "סביבה",
+    "day_plans": "פעילויות",
+    "derived": "אוטומטי",
+    "misc": "שונות"
   }
 }

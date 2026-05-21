@@ -39,10 +39,10 @@ function makeTrip(overrides: Partial<TripRowWithItemCount> = {}): TripRowWithIte
 
 function paramsMap(): Map<string, Parameter> {
   return new Map([
-    ['accom_a', param('accom_a', 'מלון', 'accommodation')],
-    ['env_cold', param('env_cold', 'קר', 'environment')],
-    ['plan_hiking', param('plan_hiking', 'טיול רגלי', 'day_plans')],
-    ['plan_swimming', param('plan_swimming', 'שחייה', 'day_plans')]
+    ['accom_a', param('accom_a', 'Hotel', 'accommodation')],
+    ['env_cold', param('env_cold', 'Cold', 'environment')],
+    ['plan_hiking', param('plan_hiking', 'Hiking', 'day_plans')],
+    ['plan_swimming', param('plan_swimming', 'Swimming', 'day_plans')]
   ]);
 }
 
@@ -84,9 +84,9 @@ describe('TripCard', () => {
     render(TripCard, {
       props: { trip: makeTrip(), parametersById: paramsMap(), maxChipsShown: 2 }
     });
-    expect(screen.getByText('מלון')).toBeInTheDocument();
-    expect(screen.getByText('קר')).toBeInTheDocument();
-    expect(screen.queryByText('טיול רגלי')).not.toBeInTheDocument();
+    expect(screen.getByText('Hotel')).toBeInTheDocument();
+    expect(screen.getByText('Cold')).toBeInTheDocument();
+    expect(screen.queryByText('Hiking')).not.toBeInTheDocument();
     expect(screen.getByText('+2')).toBeInTheDocument();
   });
 
@@ -95,8 +95,8 @@ describe('TripCard', () => {
       props: { trip: makeTrip(), parametersById: paramsMap(), maxChipsShown: 2 }
     });
     await fireEvent.click(screen.getByText('+2'));
-    expect(screen.getByText('טיול רגלי')).toBeInTheDocument();
-    expect(screen.getByText('שחייה')).toBeInTheDocument();
+    expect(screen.getByText('Hiking')).toBeInTheDocument();
+    expect(screen.getByText('Swimming')).toBeInTheDocument();
     expect(screen.queryByText('+2')).not.toBeInTheDocument();
   });
 });

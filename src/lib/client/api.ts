@@ -1,5 +1,7 @@
 import type { TripRow, TripRowWithItemCount } from '$lib/db/queries/trips.js';
 import type { Parameter } from '$lib/schemas/parameter.js';
+import type { Template } from '$lib/schemas/template.js';
+import type { Item } from '$lib/schemas/item.js';
 
 export interface ApiErrorPayload {
   error: string;
@@ -46,10 +48,29 @@ async function request<T>(
   return (await res.json()) as T;
 }
 
+export interface CreateTripBody {
+  name?: string;
+  template_id?: string;
+  start_date: string;
+  end_date: string;
+  destination?: string;
+  parameters: string[];
+  extras?: Record<string, unknown>;
+}
+
+export interface CreateTripResponse {
+  trip: TripRow;
+  items: unknown[];
+  derived: string[];
+}
+
 export interface Api {
   listTrips(): Promise<{ trips: TripRowWithItemCount[] }>;
   getTrip(id: number): Promise<unknown>;
+  createTrip(body: CreateTripBody): Promise<CreateTripResponse>;
   listParameters(): Promise<{ parameters: Parameter[] }>;
+  listTemplates(): Promise<{ templates: Template[] }>;
+  listItems(): Promise<{ items: Item[] }>;
 }
 
 export function makeApi(fetcher: Fetcher = fetch): Api {
@@ -57,9 +78,14 @@ export function makeApi(fetcher: Fetcher = fetch): Api {
     listTrips: () =>
       request<{ trips: TripRowWithItemCount[] }>(fetcher, 'GET', '/api/trips'),
     getTrip: (id) => request<unknown>(fetcher, 'GET', `/api/trips/${id}`),
+    createTrip: (body) =>
+      request<CreateTripResponse>(fetcher, 'POST', '/api/trips', body),
     listParameters: () =>
-      request<{ parameters: Parameter[] }>(fetcher, 'GET', '/api/parameters')
+      request<{ parameters: Parameter[] }>(fetcher, 'GET', '/api/parameters'),
+    listTemplates: () =>
+      request<{ templates: Template[] }>(fetcher, 'GET', '/api/templates'),
+    listItems: () => request<{ items: Item[] }>(fetcher, 'GET', '/api/items')
   };
 }
 
-export type { TripRow, TripRowWithItemCount, Parameter };
+export type { TripRow, TripRowWithItemCount, Parameter, Template, Item };
