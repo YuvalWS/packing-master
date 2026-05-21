@@ -88,5 +88,14 @@
     "delete_trip": "מחק טיול",
     "delete_confirm": "למחוק את הטיול?",
     "deleted_toast": "הטיול נמחק"
+  },
+  "regen": {
+    "title": "אישור עדכון",
+    "added_heading": "נוספו",
+    "updated_heading": "עודכנו",
+    "removed_heading": "יוסרו אם תאשר",
+    "count_preserved_note": "(נשמר ידנית: {count})",
+    "confirm": "אשר ועדכן",
+    "cancel": "השאר כפי שזה"
   }
 }

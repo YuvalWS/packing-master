@@ -3,7 +3,9 @@
   import { goto } from '$app/navigation';
   import { Trash2 } from '@lucide/svelte';
   import ParameterSelector from '$lib/components/ParameterSelector.svelte';
+  import RegenDiffModal from '$lib/components/RegenDiffModal.svelte';
   import Toast from '$lib/components/Toast.svelte';
+  import type { PatchTripResponse, PatchTripDiffRemoved } from '$lib/client/api.js';
   import { makeApi } from '$lib/client/api.js';
   import strings from '$lib/strings.js';
 
@@ -27,6 +29,15 @@
   let submitting = $state(false);
   let toastMsg = $state<string | null>(null);
   let toastTone = $state<'info' | 'success' | 'danger'>('info');
+  let pendingDiff = $state<PatchTripResponse['diff'] | null>(null);
+
+  const itemDisplayNameById = $derived.by(() => {
+    const map = new Map<string, string>();
+    for (const r of pendingDiff?.to_be_removed ?? []) {
+      map.set(r.item_id, r.display_name);
+    }
+    return map;
+  });
 
   async function save() {
     submitting = true;
@@ -54,12 +65,7 @@
         toastMsg = msg;
         setTimeout(() => goto(`/trips/${data.trip.id}`), 400);
       } else {
-        // diff modal lands in 3.8; for now route back so the user isn't blocked.
-        toastTone = 'info';
-        toastMsg = strings.settings.saved_with_changes
-          .replace('{added}', String(added))
-          .replace('{updated}', String(updated));
-        setTimeout(() => goto(`/trips/${data.trip.id}`), 400);
+        pendingDiff = res.diff;
       }
     } catch {
       toastTone = 'danger';
@@ -67,6 +73,37 @@
     } finally {
       submitting = false;
     }
+  }
+
+  async function confirmRemoval(picks: PatchTripDiffRemoved[]) {
+    if (picks.length === 0 || !pendingDiff) {
+      pendingDiff = null;
+      goto(`/trips/${data.trip.id}`);
+      return;
+    }
+    submitting = true;
+    try {
+      const api = makeApi();
+      await api.regenerateTrip(data.trip.id, {
+        remove_item_keys: picks
+          .filter((p) => p.row_id !== null)
+          .map((p) => ({ row_id: p.row_id as number }))
+      });
+      toastTone = 'success';
+      toastMsg = strings.settings.saved_toast;
+      pendingDiff = null;
+      setTimeout(() => goto(`/trips/${data.trip.id}`), 400);
+    } catch {
+      toastTone = 'danger';
+      toastMsg = strings.settings.save_failed;
+    } finally {
+      submitting = false;
+    }
+  }
+
+  function cancelRemoval() {
+    pendingDiff = null;
+    goto(`/trips/${data.trip.id}`);
   }
 
   async function destroy() {
@@ -139,6 +176,16 @@
 </section>
 
 <Toast message={toastMsg} tone={toastTone} onDismiss={() => (toastMsg = null)} />
+
+<RegenDiffModal
+  open={pendingDiff !== null}
+  added={pendingDiff?.added ?? []}
+  updated={pendingDiff?.updated ?? []}
+  toBeRemoved={pendingDiff?.to_be_removed ?? []}
+  displayNameById={itemDisplayNameById}
+  onConfirm={confirmRemoval}
+  onCancel={cancelRemoval}
+/>
 
 <style>
   .step {
