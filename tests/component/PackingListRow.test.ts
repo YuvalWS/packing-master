@@ -15,6 +15,7 @@ function row(overrides: Partial<EnrichedItem> = {}): EnrichedItem {
     default_bag: 'main_bag',
     is_kit: false,
     is_optional: false,
+    kit_contents: null,
     count: 2,
     is_checked: false,
     is_manual: false,

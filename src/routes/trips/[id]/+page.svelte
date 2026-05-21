@@ -3,12 +3,13 @@
   import { invalidate } from '$app/navigation';
   import { Settings } from '@lucide/svelte';
   import PackingListRow from '$lib/components/PackingListRow.svelte';
+  import KitComponentRow from '$lib/components/KitComponentRow.svelte';
   import CategoryGroup from '$lib/components/CategoryGroup.svelte';
   import ProgressCounter from '$lib/components/ProgressCounter.svelte';
   import ParamChip from '$lib/components/ParamChip.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import Toast from '$lib/components/Toast.svelte';
-  import type { EnrichedItem } from '$lib/client/api.js';
+  import type { EnrichedItem, KitComponentRow as KitComponentRowState } from '$lib/client/api.js';
   import { makeApi } from '$lib/client/api.js';
   import strings from '$lib/strings.js';
 
@@ -20,12 +21,34 @@
 
   // svelte-ignore state_referenced_locally
   let items = $state<EnrichedItem[]>(data.items);
+  // svelte-ignore state_referenced_locally
+  let kitComponents = $state<KitComponentRowState[]>(data.kitComponents);
   let toastMsg = $state<string | null>(null);
   let toastTone = $state<'info' | 'success' | 'danger'>('info');
+  let expandedKits = $state<Set<number>>(new Set());
 
   $effect(() => {
     items = data.items;
+    kitComponents = data.kitComponents;
   });
+
+  function kitState(itemId: string) {
+    const checks = kitComponents.filter((c) => c.kit_item_id === itemId);
+    return checks;
+  }
+
+  function kitPartial(item: EnrichedItem): boolean {
+    if (!item.is_kit || !item.kit_contents) return false;
+    const states = kitState(item.item_id ?? '');
+    const checkedCount = states.filter((s) => s.is_checked).length;
+    return checkedCount > 0 && checkedCount < item.kit_contents.length;
+  }
+
+  function isComponentChecked(itemId: string, componentId: string): boolean {
+    return kitComponents.some(
+      (c) => c.kit_item_id === itemId && c.component_id === componentId && c.is_checked
+    );
+  }
 
   const parametersById = $derived(new Map(data.parameters.map((p) => [p.id, p])));
 
@@ -78,6 +101,46 @@
       showToast(strings.packing_list.save_failed, 'danger');
     }
   }
+
+  function toggleKitExpand(rowId: number) {
+    const next = new Set(expandedKits);
+    if (next.has(rowId)) next.delete(rowId);
+    else next.add(rowId);
+    expandedKits = next;
+  }
+
+  async function toggleComponent(itemId: string, componentId: string) {
+    const previousChecked = isComponentChecked(itemId, componentId);
+    kitComponents = updateComponent(kitComponents, itemId, componentId, !previousChecked);
+    try {
+      const api = makeApi();
+      await api.toggleKitComponent(data.trip.id, itemId, componentId);
+      await invalidate(`trip:${data.trip.id}`);
+    } catch {
+      kitComponents = updateComponent(kitComponents, itemId, componentId, previousChecked);
+      showToast(strings.packing_list.save_failed, 'danger');
+    }
+  }
+
+  function updateComponent(
+    current: KitComponentRowState[],
+    itemId: string,
+    componentId: string,
+    next: boolean
+  ): KitComponentRowState[] {
+    const idx = current.findIndex(
+      (c) => c.kit_item_id === itemId && c.component_id === componentId
+    );
+    if (idx >= 0) {
+      const copy = current.slice();
+      copy[idx] = { ...copy[idx]!, is_checked: next };
+      return copy;
+    }
+    return [
+      ...current,
+      { trip_id: data.trip.id, kit_item_id: itemId, component_id: componentId, is_checked: next }
+    ];
+  }
 </script>
 
 <header class="trip-head">
@@ -129,11 +192,31 @@
         count={rows.length}
       >
         {#each rows as item (item.row_id)}
+          {@const expanded = expandedKits.has(item.row_id)}
+          {@const partial = kitPartial(item)}
           <PackingListRow
             {item}
+            {partial}
+            expandable={item.is_kit && !!item.kit_contents}
+            {expanded}
             onToggleCheck={() => patchItem(item, { is_checked: !item.is_checked })}
             onCountChange={(next) => patchItem(item, { count: next })}
+            onToggleExpand={() => toggleKitExpand(item.row_id)}
           />
+          {#if item.is_kit && item.kit_contents && expanded}
+            <ul class="kit-components" aria-label={item.display_name}>
+              {#each item.kit_contents as comp (comp.id)}
+                <li>
+                  <KitComponentRow
+                    componentId={comp.id}
+                    displayName={comp.display_name}
+                    isChecked={isComponentChecked(item.item_id ?? '', comp.id)}
+                    onToggle={() => toggleComponent(item.item_id ?? '', comp.id)}
+                  />
+                </li>
+              {/each}
+            </ul>
+          {/if}
         {/each}
       </CategoryGroup>
     {/each}
@@ -211,5 +294,12 @@
   .cta:hover {
     text-decoration: none;
     background: #1d4ed8;
+  }
+
+  .kit-components {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding-block-start: var(--space-1);
   }
 </style>

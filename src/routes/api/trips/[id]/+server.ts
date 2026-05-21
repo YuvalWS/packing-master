@@ -18,6 +18,7 @@ interface EnrichedItem {
   default_bag: string | null;
   is_kit: boolean;
   is_optional: boolean;
+  kit_contents: { id: string; display_name: string; default_count: number }[] | null;
   count: number;
   is_checked: boolean;
   is_manual: boolean;
@@ -50,6 +51,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
       default_bag: cat?.default_bag ?? null,
       is_kit: cat?.is_kit ?? false,
       is_optional: cat?.is_optional ?? false,
+      kit_contents: cat?.is_kit && cat.kit_contents ? cat.kit_contents : null,
       count: r.count,
       is_checked: r.is_checked,
       is_manual: r.is_manual,

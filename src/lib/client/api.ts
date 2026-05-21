@@ -64,6 +64,12 @@ export interface CreateTripResponse {
   derived: string[];
 }
 
+export interface KitComponentDefinition {
+  id: string;
+  display_name: string;
+  default_count: number;
+}
+
 export interface EnrichedItem {
   row_id: number;
   item_id: string | null;
@@ -72,6 +78,7 @@ export interface EnrichedItem {
   default_bag: string | null;
   is_kit: boolean;
   is_optional: boolean;
+  kit_contents: KitComponentDefinition[] | null;
   count: number;
   is_checked: boolean;
   is_manual: boolean;
@@ -122,6 +129,11 @@ export interface Api {
     key: string | number,
     body: PatchTripItemBody
   ): Promise<{ item: DbTripItemRow }>;
+  toggleKitComponent(
+    tripId: number,
+    itemId: string,
+    componentId: string
+  ): Promise<{ component: KitComponentRow }>;
   listParameters(): Promise<{ parameters: Parameter[] }>;
   listTemplates(): Promise<{ templates: Template[] }>;
   listItems(): Promise<{ items: Item[] }>;
@@ -140,6 +152,12 @@ export function makeApi(fetcher: Fetcher = fetch): Api {
         'PATCH',
         `/api/trips/${tripId}/items/${encodeURIComponent(String(key))}`,
         body
+      ),
+    toggleKitComponent: (tripId, itemId, componentId) =>
+      request<{ component: KitComponentRow }>(
+        fetcher,
+        'POST',
+        `/api/trips/${tripId}/items/${encodeURIComponent(itemId)}/components/${encodeURIComponent(componentId)}`
       ),
     listParameters: () =>
       request<{ parameters: Parameter[] }>(fetcher, 'GET', '/api/parameters'),

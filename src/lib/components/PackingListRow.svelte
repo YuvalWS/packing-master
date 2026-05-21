@@ -1,31 +1,28 @@
 <script lang="ts">
-  import { Check } from '@lucide/svelte';
+  import { Check, ChevronDown } from '@lucide/svelte';
   import Stepper from './Stepper.svelte';
+  import type { EnrichedItem } from '$lib/client/api.js';
   import strings from '$lib/strings.js';
-
-  export interface EnrichedItem {
-    row_id: number;
-    item_id: string | null;
-    display_name: string;
-    category: string | null;
-    default_bag: string | null;
-    is_kit: boolean;
-    is_optional: boolean;
-    count: number;
-    is_checked: boolean;
-    is_manual: boolean;
-    bag_distribution: Record<string, unknown> | null;
-    notes: string | null;
-    count_was_edited: boolean;
-  }
 
   interface Props {
     item: EnrichedItem;
+    partial?: boolean;
+    expandable?: boolean;
+    expanded?: boolean;
     onToggleCheck: () => void;
     onCountChange: (next: number) => void;
+    onToggleExpand?: () => void;
   }
 
-  let { item, onToggleCheck, onCountChange }: Props = $props();
+  let {
+    item,
+    partial = false,
+    expandable = false,
+    expanded = false,
+    onToggleCheck,
+    onCountChange,
+    onToggleExpand
+  }: Props = $props();
 
   const checkLabel = $derived(strings.a11y_row.toggle_check.replace('{name}', item.display_name));
 </script>
@@ -35,12 +32,17 @@
     type="button"
     class="checkbox"
     class:dashed={item.is_optional}
+    class:partial
     role="checkbox"
-    aria-checked={item.is_checked}
+    aria-checked={partial ? 'mixed' : item.is_checked}
     aria-label={checkLabel}
     onclick={onToggleCheck}
   >
-    {#if item.is_checked}<Check size={18} />{/if}
+    {#if item.is_checked}
+      <Check size={18} />
+    {:else if partial}
+      <span class="partial-dot" aria-hidden="true"></span>
+    {/if}
   </button>
 
   <div class="body">
@@ -63,6 +65,18 @@
     />
     {#if item.count_was_edited}
       <span class="edited-dot" aria-hidden="true"></span>
+    {/if}
+    {#if expandable && onToggleExpand}
+      <button
+        type="button"
+        class="expand-btn"
+        class:expanded
+        aria-expanded={expanded}
+        aria-label={strings.a11y_row.row_menu}
+        onclick={onToggleExpand}
+      >
+        <ChevronDown size={18} />
+      </button>
     {/if}
   </div>
 </div>
@@ -160,5 +174,37 @@
     height: 6px;
     border-radius: 50%;
     background: var(--color-warning);
+  }
+
+  .partial-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    background: var(--color-primary);
+  }
+
+  .checkbox.partial {
+    border-color: var(--color-primary);
+  }
+
+  .expand-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: transform 0.18s ease;
+  }
+
+  .expand-btn:hover {
+    color: var(--color-primary);
+    background: var(--color-primary-soft);
+  }
+
+  .expand-btn.expanded {
+    transform: rotate(180deg);
   }
 </style>
