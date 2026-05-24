@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import strings from '../../src/lib/strings.json' with { type: 'json' };
+import { goto } from './_helpers.js';
 
 test('templates list → detail → back to list', async ({ page, request }) => {
   const res = await request.get('/api/templates');
@@ -11,7 +12,7 @@ test('templates list → detail → back to list', async ({ page, request }) => 
     return;
   }
 
-  await page.goto('/templates');
+  await goto(page, '/templates');
   await expect(page.getByRole('heading', { name: templates[0]!.display_name })).toBeVisible();
 
   await page.getByRole('link', { name: new RegExp(templates[0]!.display_name) }).first().click();

@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { resetTrips, goto, reload } from './_helpers.js';
+
+test.beforeEach(resetTrips);
 
 test('expanding a kit row and checking a component persists across reload', async ({
   page,
@@ -18,7 +21,7 @@ test('expanding a kit row and checking a component persists across reload', asyn
   });
   const { trip } = (await created.json()) as { trip: { id: number } };
 
-  await page.goto(`/trips/${trip.id}`);
+  await goto(page, `/trips/${trip.id}`);
 
   const expandButtons = page.locator('button[aria-expanded]');
   const expandCount = await expandButtons.count();
@@ -34,11 +37,16 @@ test('expanding a kit row and checking a component persists across reload', asyn
   const kitCheckbox = page
     .locator('[data-component-id]')
     .first()
-    .getByRole('checkbox');
-  await kitCheckbox.click();
+    .locator('[role="checkbox"]');
+  await Promise.all([
+    page.waitForResponse(
+      (r) => /\/api\/trips\/\d+\/items\/.+\/components\//.test(r.url()) && r.ok()
+    ),
+    kitCheckbox.click()
+  ]);
   await expect(kitCheckbox).toHaveAttribute('aria-checked', 'true');
 
-  await page.reload();
+  await reload(page);
   const expandAfter = page.locator('button[aria-expanded]').first();
   await expandAfter.click();
   await expect(page.locator('[data-component-id]').first().getByRole('checkbox')).toHaveAttribute(

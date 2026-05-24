@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 import strings from '../../src/lib/strings.json' with { type: 'json' };
+import { resetTrips, goto } from './_helpers.js';
+
+test.beforeEach(resetTrips);
 
 test('renaming a trip from settings persists and returns to the packing list', async ({
   page,
@@ -19,7 +22,7 @@ test('renaming a trip from settings persists and returns to the packing list', a
   });
   const { trip } = (await created.json()) as { trip: { id: number } };
 
-  await page.goto(`/trips/${trip.id}/settings`);
+  await goto(page, `/trips/${trip.id}/settings`);
 
   await page.getByLabel(strings.new_trip.label_name).fill('Renamed Trip');
   await page.getByRole('button', { name: strings.common.save }).click();

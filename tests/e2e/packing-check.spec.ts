@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 import strings from '../../src/lib/strings.json' with { type: 'json' };
+import { resetTrips, goto, reload } from './_helpers.js';
+
+test.beforeEach(resetTrips);
 
 test('check toggle on a packing-list row persists across reload', async ({ page, request }) => {
   // Create a trip via API so we don't depend on the new-trip UI in this spec.
@@ -19,15 +22,21 @@ test('check toggle on a packing-list row persists across reload', async ({ page,
   expect(created.ok()).toBeTruthy();
   const { trip } = (await created.json()) as { trip: { id: number } };
 
-  await page.goto(`/trips/${trip.id}`);
+  await goto(page, `/trips/${trip.id}`);
 
-  const firstCheckbox = page.getByRole('checkbox').first();
+  const rowCheckboxes = page.getByRole('checkbox', { name: /^סמן את/ });
+  const firstCheckbox = rowCheckboxes.first();
   await expect(firstCheckbox).toHaveAttribute('aria-checked', 'false');
-  await firstCheckbox.click();
+  await Promise.all([
+    page.waitForResponse((r) => /\/api\/trips\/\d+\/items\//.test(r.url()) && r.request().method() === 'PATCH' && r.ok()),
+    firstCheckbox.click()
+  ]);
   await expect(firstCheckbox).toHaveAttribute('aria-checked', 'true');
 
-  await page.reload();
-  await expect(page.getByRole('checkbox').first()).toHaveAttribute('aria-checked', 'true');
+  await reload(page);
+  await expect(
+    page.getByRole('checkbox', { name: /^סמן את/ }).first()
+  ).toHaveAttribute('aria-checked', 'true');
 
   // sanity: e2e helper imports strings without using them — placeholder for
   // future assertions that reference UI chrome by label.

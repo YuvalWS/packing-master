@@ -1,12 +1,13 @@
 import { test, expect } from '@playwright/test';
 import strings from '../../src/lib/strings.json' with { type: 'json' };
+import { goto } from './_helpers.js';
 
 test('catalog list → item detail → back to list', async ({ page, request }) => {
   const res = await request.get('/api/items');
   const { items } = (await res.json()) as { items: { id: string; display_name: string }[] };
   expect(items.length).toBeGreaterThan(0);
 
-  await page.goto('/items');
+  await goto(page, '/items');
   await expect(page.getByPlaceholder(strings.items_catalog.search_placeholder)).toBeVisible();
 
   const firstLink = page.getByRole('link', { name: items[0]!.display_name }).first();

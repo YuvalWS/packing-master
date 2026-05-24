@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { onMount } from 'svelte';
   import { page } from '$app/state';
   import AppShell from '$lib/components/AppShell.svelte';
   import strings from '$lib/strings.js';
@@ -11,6 +12,10 @@
   }
 
   let { children }: Props = $props();
+
+  onMount(() => {
+    document.documentElement.dataset.hydrated = 'true';
+  });
 
   function resolveTitle(pathname: string): string {
     if (pathname === '/' || pathname.startsWith('/trips')) return strings.nav.trips;

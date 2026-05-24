@@ -90,15 +90,19 @@
     max-width: 85vw;
     background: var(--color-surface);
     z-index: var(--z-drawer);
-    transform: translateX(100%);
     transition: transform 0.2s ease;
     box-shadow: var(--shadow-lg);
     display: flex;
     flex-direction: column;
   }
 
-  :global(html[dir='rtl']) .drawer {
+  .drawer:not(.open) {
     transform: translateX(-100%);
+    pointer-events: none;
+  }
+
+  :global(html[dir='rtl']) .drawer:not(.open) {
+    transform: translateX(100%);
   }
 
   .drawer.open {

@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 import strings from '../../src/lib/strings.json' with { type: 'json' };
+import { resetTrips, goto, reload } from './_helpers.js';
+
+test.beforeEach(resetTrips);
 
 test('switching to by-bag persists across reload', async ({ page, request }) => {
   const params = await request.get('/api/parameters');
@@ -16,7 +19,7 @@ test('switching to by-bag persists across reload', async ({ page, request }) => 
   });
   const { trip } = (await created.json()) as { trip: { id: number } };
 
-  await page.goto(`/trips/${trip.id}`);
+  await goto(page, `/trips/${trip.id}`);
 
   const byBagTab = page.getByRole('tab', { name: strings.view.by_bag });
   const byCategoryTab = page.getByRole('tab', { name: strings.view.by_category });
@@ -25,7 +28,7 @@ test('switching to by-bag persists across reload', async ({ page, request }) => 
   await byBagTab.click();
   await expect(byBagTab).toHaveAttribute('aria-selected', 'true');
 
-  await page.reload();
+  await reload(page);
   await expect(page.getByRole('tab', { name: strings.view.by_bag })).toHaveAttribute(
     'aria-selected',
     'true'

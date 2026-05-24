@@ -1,8 +1,11 @@
 import { test, expect } from '@playwright/test';
 import strings from '../../src/lib/strings.json' with { type: 'json' };
+import { resetTrips, goto } from './_helpers.js';
+
+test.beforeEach(resetTrips);
 
 test('empty trips list shows empty state and a FAB linking to /trips/new', async ({ page }) => {
-  await page.goto('/');
+  await goto(page, '/');
 
   await expect(
     page.getByRole('heading', { name: strings.trips_list.empty_title })

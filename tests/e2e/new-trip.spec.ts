@@ -1,10 +1,13 @@
 import { test, expect } from '@playwright/test';
 import strings from '../../src/lib/strings.json' with { type: 'json' };
+import { resetTrips, goto } from './_helpers.js';
+
+test.beforeEach(resetTrips);
 
 test('new trip flow: pick a template, fill details, submit, land on packing list', async ({
   page
 }) => {
-  await page.goto('/trips/new');
+  await goto(page, '/trips/new');
 
   await expect(page.getByRole('heading', { name: strings.new_trip.step_template_title })).toBeVisible();
   await page.getByRole('button', { name: strings.new_trip.no_template }).click();
