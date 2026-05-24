@@ -148,6 +148,22 @@ export interface RegenerateBody {
   remove_item_keys: ({ item_id: string } | { row_id: number })[];
 }
 
+export interface AddCatalogItemBody {
+  item_id: string;
+  count?: number;
+  bag_distribution?: Record<string, unknown>;
+  notes?: string;
+}
+
+export interface AddFreeTextItemBody {
+  display_name: string;
+  count?: number;
+  bag_distribution?: Record<string, unknown>;
+  notes?: string;
+  category?: string;
+  default_bag?: string;
+}
+
 export interface DbTripItemRow {
   id: number;
   trip_id: number;
@@ -178,6 +194,8 @@ export interface Api {
     itemId: string,
     componentId: string
   ): Promise<{ component: KitComponentRow }>;
+  addCatalogItem(tripId: number, body: AddCatalogItemBody): Promise<{ item: DbTripItemRow }>;
+  addFreeTextItem(tripId: number, body: AddFreeTextItemBody): Promise<{ item: DbTripItemRow }>;
   listParameters(): Promise<{ parameters: Parameter[] }>;
   listTemplates(): Promise<{ templates: Template[] }>;
   listItems(): Promise<{ items: Item[] }>;
@@ -209,6 +227,10 @@ export function makeApi(fetcher: Fetcher = fetch): Api {
         'POST',
         `/api/trips/${tripId}/items/${encodeURIComponent(itemId)}/components/${encodeURIComponent(componentId)}`
       ),
+    addCatalogItem: (tripId, body) =>
+      request<{ item: DbTripItemRow }>(fetcher, 'POST', `/api/trips/${tripId}/items`, body),
+    addFreeTextItem: (tripId, body) =>
+      request<{ item: DbTripItemRow }>(fetcher, 'POST', `/api/trips/${tripId}/items`, body),
     listParameters: () =>
       request<{ parameters: Parameter[] }>(fetcher, 'GET', '/api/parameters'),
     listTemplates: () =>

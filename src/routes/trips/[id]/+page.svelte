@@ -11,6 +11,9 @@
   import Toast from '$lib/components/Toast.svelte';
   import BagFilterToggle from '$lib/components/BagFilterToggle.svelte';
   import CheckedToBottomToggle from '$lib/components/CheckedToBottomToggle.svelte';
+  import ManualAddSheet from '$lib/components/ManualAddSheet.svelte';
+  import Fab from '$lib/components/Fab.svelte';
+  import { Plus } from '@lucide/svelte';
   import type { EnrichedItem, KitComponentRow as KitComponentRowState } from '$lib/client/api.js';
   import { makeApi } from '$lib/client/api.js';
   import { loadPrefs, savePrefs, type ViewMode } from '$lib/client/view-prefs.js';
@@ -29,6 +32,11 @@
   let toastMsg = $state<string | null>(null);
   let toastTone = $state<'info' | 'success' | 'danger'>('info');
   let expandedKits = $state<Set<number>>(new Set());
+  let addSheetOpen = $state(false);
+
+  const existingItemIds = $derived(
+    new Set(items.map((it) => it.item_id).filter((id): id is string => !!id))
+  );
   let viewMode = $state<ViewMode>('category');
   let checkedToBottom = $state(false);
 
@@ -267,6 +275,23 @@
     {/each}
   </div>
 {/if}
+
+<Fab onclick={() => (addSheetOpen = true)} ariaLabel={strings.manual_add.title}>
+  <Plus size={28} />
+</Fab>
+
+<ManualAddSheet
+  open={addSheetOpen}
+  tripId={data.trip.id}
+  {existingItemIds}
+  onAdded={async () => {
+    addSheetOpen = false;
+    showToast(strings.manual_add.added_toast, 'success');
+    await invalidate(`trip:${data.trip.id}`);
+  }}
+  onClose={() => (addSheetOpen = false)}
+  onError={(msg) => showToast(msg, 'danger')}
+/>
 
 <Toast message={toastMsg} tone={toastTone} onDismiss={() => (toastMsg = null)} />
 

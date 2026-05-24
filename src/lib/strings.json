@@ -97,5 +97,19 @@
     "count_preserved_note": "(נשמר ידנית: {count})",
     "confirm": "אשר ועדכן",
     "cancel": "השאר כפי שזה"
+  },
+  "manual_add": {
+    "title": "הוסף פריט",
+    "tab_catalog": "מתוך הקטלוג",
+    "tab_free_text": "פריט חופשי",
+    "search_placeholder": "חפש פריט…",
+    "no_results": "לא נמצאו פריטים",
+    "free_text_placeholder": "שם הפריט",
+    "count_label": "כמות",
+    "submit": "הוסף",
+    "already_in_trip": "הפריט כבר ברשימה",
+    "free_text_empty": "יש להזין שם פריט",
+    "add_failed": "ההוספה נכשלה. נסה שוב.",
+    "added_toast": "הפריט נוסף"
   }
 }
