@@ -98,6 +98,54 @@
     "confirm": "אשר ועדכן",
     "cancel": "השאר כפי שזה"
   },
+  "items_catalog": {
+    "search_placeholder": "חפש פריט בקטלוג…",
+    "no_results": "לא נמצאו פריטים",
+    "field_id": "מזהה",
+    "field_category": "קטגוריה",
+    "field_default_bag": "תיק ברירת מחדל",
+    "field_kit": "ערכה",
+    "field_optional": "רשות",
+    "field_shared": "משותף",
+    "field_condition": "מתי כלול",
+    "field_quantity": "כמות",
+    "field_notes": "הערות",
+    "field_kit_contents": "תכולת הערכה",
+    "back_to_list": "חזרה לרשימה",
+    "not_found": "פריט לא נמצא",
+    "yes": "כן",
+    "no": "לא"
+  },
+  "templates_catalog": {
+    "field_id": "מזהה",
+    "field_parameters": "פרמטרים ברירת מחדל",
+    "field_extras": "מידע נוסף",
+    "back_to_list": "חזרה לרשימה",
+    "not_found": "תבנית לא נמצאה",
+    "no_default_parameters": "ללא פרמטרים"
+  },
+  "condition": {
+    "always": "תמיד",
+    "and_join": " וגם ",
+    "or_join": " או ",
+    "not_prefix": "לא: ",
+    "param_active": "פרמטר {id} פעיל",
+    "any_of": "אחד מ-: {ids}",
+    "all_of": "כל אלה: {ids}",
+    "eq": "{path} = {value}",
+    "gte": "{path} ≥ {value}",
+    "includes_shabbat": "כולל שבת"
+  },
+  "quantity": {
+    "fixed": "{n} (קבוע)",
+    "per_day": "{n} לכל יום",
+    "per_n_days_no_min": "{n} לכל {days} ימים",
+    "per_n_days_with_min": "{n} לכל {days} ימים (מינימום {min})",
+    "per_weekday": "{n} לכל יום חול",
+    "per_shabbat": "{n} לכל שבת",
+    "days_plus_no_min": "ימים + {add}",
+    "days_plus_with_min": "ימים + {add} (מינימום {min})"
+  },
   "manual_add": {
     "title": "הוסף פריט",
     "tab_catalog": "מתוך הקטלוג",

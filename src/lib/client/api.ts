@@ -199,6 +199,8 @@ export interface Api {
   listParameters(): Promise<{ parameters: Parameter[] }>;
   listTemplates(): Promise<{ templates: Template[] }>;
   listItems(): Promise<{ items: Item[] }>;
+  getItem(id: string): Promise<{ item: Item }>;
+  getTemplate(id: string): Promise<{ template: Template }>;
 }
 
 export function makeApi(fetcher: Fetcher = fetch): Api {
@@ -235,7 +237,10 @@ export function makeApi(fetcher: Fetcher = fetch): Api {
       request<{ parameters: Parameter[] }>(fetcher, 'GET', '/api/parameters'),
     listTemplates: () =>
       request<{ templates: Template[] }>(fetcher, 'GET', '/api/templates'),
-    listItems: () => request<{ items: Item[] }>(fetcher, 'GET', '/api/items')
+    listItems: () => request<{ items: Item[] }>(fetcher, 'GET', '/api/items'),
+    getItem: (id: string) => request<{ item: Item }>(fetcher, 'GET', `/api/items/${encodeURIComponent(id)}`),
+    getTemplate: (id: string) =>
+      request<{ template: Template }>(fetcher, 'GET', `/api/templates/${encodeURIComponent(id)}`)
   };
 }
 
