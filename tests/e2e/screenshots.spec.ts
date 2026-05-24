@@ -1,4 +1,5 @@
 import { test } from '@playwright/test';
+import strings from '../../src/lib/strings.json' with { type: 'json' };
 import { resetTrips, goto } from './_helpers.js';
 
 test.use({ viewport: { width: 390, height: 844 } });
@@ -13,7 +14,7 @@ test('capture all screens', async ({ page, request }) => {
   await page.screenshot({ path: `${dir}/01-trips-empty.png`, fullPage: true });
 
   // 2) drawer open
-  await page.getByRole('button', { name: 'פתח תפריט' }).click();
+  await page.getByRole('button', { name: strings.a11y.open_menu }).click();
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${dir}/02-drawer-open.png`, fullPage: true });
   await page.keyboard.press('Escape');
@@ -23,7 +24,7 @@ test('capture all screens', async ({ page, request }) => {
   await page.screenshot({ path: `${dir}/03-new-trip-templates.png`, fullPage: true });
 
   // 4) new-trip step 2
-  await page.getByRole('button', { name: 'ללא תבנית' }).click();
+  await page.getByRole('button', { name: strings.new_trip.no_template }).click();
   await page.waitForTimeout(200);
   await page.screenshot({ path: `${dir}/04-new-trip-details.png`, fullPage: true });
 
@@ -54,23 +55,23 @@ test('capture all screens', async ({ page, request }) => {
   await page.screenshot({ path: `${dir}/06-packing-list.png`, fullPage: true });
 
   // 7) check one row
-  const labelPrefix = 'סמן את';
+  const labelPrefix = strings.a11y_row.toggle_check.split('{name}')[0]!;
   await page.getByRole('checkbox', { name: new RegExp('^' + labelPrefix) }).first().click();
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${dir}/07-packing-checked.png`, fullPage: true });
 
   // 8) by-bag view
-  await page.getByRole('tab', { name: 'לפי תיק' }).click();
+  await page.getByRole('tab', { name: strings.view.by_bag }).click();
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${dir}/08-packing-by-bag.png`, fullPage: true });
 
   // 9) open manual-add sheet
-  await page.getByRole('tab', { name: 'לפי קטגוריה' }).click();
-  await page.getByRole('button', { name: 'הוסף פריט' }).first().click();
+  await page.getByRole('tab', { name: strings.view.by_category }).click();
+  await page.getByRole('button', { name: strings.manual_add.title }).first().click();
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${dir}/09-manual-add-catalog.png`, fullPage: true });
 
-  await page.getByRole('tab', { name: 'פריט חופשי' }).click();
+  await page.getByRole('tab', { name: strings.manual_add.tab_free_text }).click();
   await page.waitForTimeout(200);
   await page.screenshot({ path: `${dir}/10-manual-add-freetext.png`, fullPage: true });
 

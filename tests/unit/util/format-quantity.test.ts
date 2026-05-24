@@ -13,15 +13,19 @@ describe('formatQuantity', () => {
 
   it('formats per_n_days without min', () => {
     const out = formatQuantity({ per_n_days: { n: 3 } });
-    expect(out).toContain('3');
-    expect(out).not.toContain('מינימום');
+    const expected = strings.quantity.per_n_days_no_min
+      .replace('{n}', '1')
+      .replace('{days}', '3');
+    expect(out).toBe(expected);
   });
 
   it('formats per_n_days with min', () => {
     const out = formatQuantity({ per_n_days: { n: 3, min: 2 } });
-    expect(out).toContain('3');
-    expect(out).toContain('2');
-    expect(out).toContain(strings.quantity.per_n_days_with_min.split('(')[1]!.slice(0, 6));
+    const expected = strings.quantity.per_n_days_with_min
+      .replace('{n}', '1')
+      .replace('{days}', '3')
+      .replace('{min}', '2');
+    expect(out).toBe(expected);
   });
 
   it('formats per_weekday', () => {
