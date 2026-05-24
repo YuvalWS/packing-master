@@ -23,15 +23,18 @@
 
   <h1 class="title">{title}</h1>
 
-  <button
-    type="button"
-    class="icon-btn"
-    aria-label={strings.a11y.settings}
-    onclick={onSettingsClick}
-    disabled={!onSettingsClick}
-  >
-    <Settings size={22} />
-  </button>
+  {#if onSettingsClick}
+    <button
+      type="button"
+      class="icon-btn"
+      aria-label={strings.a11y.settings}
+      onclick={onSettingsClick}
+    >
+      <Settings size={22} />
+    </button>
+  {:else}
+    <span class="icon-btn-spacer" aria-hidden="true"></span>
+  {/if}
 </header>
 
 <style>
@@ -71,5 +74,11 @@
 
   .icon-btn:hover:not(:disabled) {
     background: var(--color-primary-soft);
+  }
+
+  .icon-btn-spacer {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
   }
 </style>

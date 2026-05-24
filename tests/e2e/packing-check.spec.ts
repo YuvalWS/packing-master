@@ -24,21 +24,19 @@ test('check toggle on a packing-list row persists across reload', async ({ page,
 
   await goto(page, `/trips/${trip.id}`);
 
-  const rowCheckboxes = page.getByRole('checkbox', { name: /^סמן את/ });
+  const labelPrefix = strings.a11y_row.toggle_check.split('{name}')[0]!;
+  const rowCheckboxes = page.getByRole('checkbox', { name: new RegExp('^' + labelPrefix) });
   const firstCheckbox = rowCheckboxes.first();
   await expect(firstCheckbox).toHaveAttribute('aria-checked', 'false');
   await Promise.all([
-    page.waitForResponse((r) => /\/api\/trips\/\d+\/items\//.test(r.url()) && r.request().method() === 'PATCH' && r.ok()),
+    page.waitForResponse(
+      (r) =>
+        /\/api\/trips\/\d+\/items\//.test(r.url()) && r.request().method() === 'PATCH' && r.ok()
+    ),
     firstCheckbox.click()
   ]);
   await expect(firstCheckbox).toHaveAttribute('aria-checked', 'true');
 
   await reload(page);
-  await expect(
-    page.getByRole('checkbox', { name: /^סמן את/ }).first()
-  ).toHaveAttribute('aria-checked', 'true');
-
-  // sanity: e2e helper imports strings without using them — placeholder for
-  // future assertions that reference UI chrome by label.
-  expect(strings.packing_list.empty_title).toBeTruthy();
+  await expect(rowCheckboxes.first()).toHaveAttribute('aria-checked', 'true');
 });

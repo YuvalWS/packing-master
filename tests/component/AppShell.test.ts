@@ -54,15 +54,33 @@ describe('AppShell', () => {
     expect(drawer).toHaveAttribute('aria-hidden', 'true');
   });
 
-  it('settings button is disabled when no handler is provided', () => {
+  it('hides the settings button entirely when no handler is provided', () => {
     render(AppShell, {
       props: {
         title: 'Hello',
         children: bodySnippet('x')
       }
     });
+    expect(
+      screen.queryByRole('button', { name: strings.a11y.settings })
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders an enabled settings button when a handler is provided', async () => {
+    let clicked = false;
+    render(AppShell, {
+      props: {
+        title: 'Hello',
+        onSettingsClick: () => {
+          clicked = true;
+        },
+        children: bodySnippet('x')
+      }
+    });
     const settingsBtn = screen.getByRole('button', { name: strings.a11y.settings });
-    expect(settingsBtn).toBeDisabled();
+    expect(settingsBtn).not.toBeDisabled();
+    await fireEvent.click(settingsBtn);
+    expect(clicked).toBe(true);
   });
 
   it('renders nav links with Hebrew labels from strings.json', async () => {

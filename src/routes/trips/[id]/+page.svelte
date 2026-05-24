@@ -17,6 +17,7 @@
   import type { EnrichedItem, KitComponentRow as KitComponentRowState } from '$lib/client/api.js';
   import { makeApi } from '$lib/client/api.js';
   import { loadPrefs, savePrefs, type ViewMode } from '$lib/client/view-prefs.js';
+  import { formatDateRange } from '$lib/util/format-date.js';
   import strings from '$lib/strings.js';
 
   interface Props {
@@ -197,13 +198,13 @@
 <header class="trip-head">
   <div class="title-row">
     <h2 class="trip-name">
-      {data.trip.name ?? `${data.trip.start_date} – ${data.trip.end_date}`}
+      {data.trip.name ?? formatDateRange(data.trip.start_date, data.trip.end_date)}
     </h2>
     <a class="settings-link" href={`/trips/${data.trip.id}/settings`} aria-label={strings.a11y.settings}>
       <Settings size={20} />
     </a>
   </div>
-  <p class="dates ltr-number">{data.trip.start_date} – {data.trip.end_date}</p>
+  <p class="dates ltr-number">{formatDateRange(data.trip.start_date, data.trip.end_date)}</p>
 
   {#if data.trip.context.parameters.length > 0}
     <ul class="param-chips">

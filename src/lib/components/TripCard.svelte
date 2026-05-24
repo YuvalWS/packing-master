@@ -2,6 +2,7 @@
   import type { TripRowWithItemCount, Parameter } from '$lib/client/api.js';
   import ParamChip from './ParamChip.svelte';
   import strings from '$lib/strings.js';
+  import { formatDateRange } from '$lib/util/format-date.js';
 
   interface Props {
     trip: TripRowWithItemCount;
@@ -21,7 +22,7 @@
       : strings.trips_list.no_name_fallback.replace('{days}', String(days))
   );
 
-  const dateRange = $derived(`${formatDate(trip.start_date)} – ${formatDate(trip.end_date)}`);
+  const dateRange = $derived(formatDateRange(trip.start_date, trip.end_date));
 
   const itemCountLabel = $derived(
     trip.item_count === 1
@@ -43,11 +44,6 @@
     const end = new Date(endISO + 'T00:00:00Z');
     const ms = end.getTime() - start.getTime();
     return Math.max(1, Math.round(ms / 86_400_000) + 1);
-  }
-
-  function formatDate(iso: string): string {
-    const [y, m, d] = iso.split('-');
-    return `${d}/${m}/${y}`;
   }
 </script>
 
