@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import strings from '../../src/lib/strings.json' with { type: 'json' };
 import { resetTrips, goto } from './_helpers.js';
 
+test.use({ viewport: { width: 390, height: 844 } });
+
 test.beforeEach(resetTrips);
 
 test('home page loads with RTL Hebrew layout', async ({ page }) => {

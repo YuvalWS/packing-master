@@ -4,11 +4,14 @@
 
   interface Props {
     open: boolean;
+    permanent?: boolean;
     onClose: () => void;
     currentPath?: string;
   }
 
-  let { open, onClose, currentPath = '/' }: Props = $props();
+  let { open, permanent = false, onClose, currentPath = '/' }: Props = $props();
+
+  const interactable = $derived(open || permanent);
 
   const links = [
     { href: '/', label: strings.nav.trips, icon: Backpack },
@@ -40,7 +43,8 @@
 <aside
   class="drawer"
   class:open
-  aria-hidden={!open}
+  class:permanent
+  aria-hidden={!interactable}
   aria-label={strings.nav.trips}
 >
   <div class="drawer-head">
@@ -49,7 +53,7 @@
       class="icon-btn"
       aria-label={strings.a11y.close_menu}
       onclick={onClose}
-      tabindex={open ? 0 : -1}
+      tabindex={interactable ? 0 : -1}
     >
       <X size={22} />
     </button>
@@ -63,7 +67,7 @@
             href={link.href}
             class:active={isActive(link.href)}
             onclick={onClose}
-            tabindex={open ? 0 : -1}
+            tabindex={interactable ? 0 : -1}
           >
             <Icon size={20} />
             <span>{link.label}</span>
@@ -159,5 +163,29 @@
   a.active {
     background: var(--color-primary-soft);
     color: var(--color-primary);
+  }
+
+  /* Permanent sidebar on wider viewports: drawer is always visible,
+     no backdrop, hamburger and close button hidden via global CSS. */
+  @media (min-width: 960px) {
+    .backdrop {
+      display: none;
+    }
+
+    .drawer,
+    .drawer:not(.open) {
+      transform: translateX(0);
+      pointer-events: auto;
+      box-shadow: none;
+      border-inline-start: 1px solid var(--color-border);
+    }
+
+    :global(html[dir='rtl']) .drawer:not(.open) {
+      transform: translateX(0);
+    }
+
+    .drawer-head {
+      display: none;
+    }
   }
 </style>

@@ -14,7 +14,7 @@
 <header class="topbar">
   <button
     type="button"
-    class="icon-btn"
+    class="icon-btn menu-btn"
     aria-label={strings.a11y.open_menu}
     onclick={onMenuClick}
   >
@@ -80,5 +80,11 @@
     width: 40px;
     height: 40px;
     flex-shrink: 0;
+  }
+
+  @media (min-width: 960px) {
+    .menu-btn {
+      display: none;
+    }
   }
 </style>

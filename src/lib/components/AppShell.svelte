@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { onMount } from 'svelte';
   import TopAppBar from './TopAppBar.svelte';
   import NavigationDrawer from './NavigationDrawer.svelte';
 
@@ -13,6 +14,17 @@
   let { title, currentPath, onSettingsClick, children }: Props = $props();
 
   let drawerOpen = $state(false);
+  let isDesktop = $state(false);
+
+  onMount(() => {
+    const mql = window.matchMedia('(min-width: 960px)');
+    const update = () => {
+      isDesktop = mql.matches;
+    };
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
+  });
 </script>
 
 <div class="shell">
@@ -24,6 +36,7 @@
 
   <NavigationDrawer
     open={drawerOpen}
+    permanent={isDesktop}
     onClose={() => (drawerOpen = false)}
     {currentPath}
   />
@@ -48,5 +61,14 @@
     margin-inline: auto;
     padding: var(--space-4);
     padding-block-end: var(--fab-clearance);
+  }
+
+  /* When the drawer becomes a permanent sidebar, the whole shell shifts
+     by the drawer's inline-start width so centered content lands in the
+     remaining viewport rather than under the drawer. */
+  @media (min-width: 960px) {
+    .shell {
+      padding-inline-start: var(--drawer-width);
+    }
   }
 </style>
