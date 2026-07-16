@@ -20,7 +20,8 @@
     "items_count_one": "פריט אחד",
     "items_count_many": "{count} פריטים",
     "no_name_fallback": "{days} ימים",
-    "and_more": "+{count}"
+    "and_more": "+{count}",
+    "show_less": "הצג פחות"
   },
   "common": {
     "day_one": "יום",
@@ -65,7 +66,21 @@
     "manual_tag": "ידני",
     "optional_tag": "רשות",
     "category_uncategorized": "כללי",
-    "save_failed": "שמירה נכשלה. נסה שוב."
+    "save_failed": "שמירה נכשלה. נסה שוב.",
+    "search_open": "חפש ברשימה",
+    "search_placeholder": "חפש פריט…",
+    "filter_all": "הכל",
+    "filter_required": "חובה שנותרו",
+    "filter_optional": "רשות שנותרו",
+    "filter_hint": "סנן לפי מצב סימון"
+  },
+  "trip_header": {
+    "shabbat_one": "שבת",
+    "shabbat_many": "{count} שבתות"
+  },
+  "trip_menu": {
+    "title": "אפשרויות טיול",
+    "open": "פתח אפשרויות"
   },
   "a11y_row": {
     "toggle_check": "סמן את {name}",

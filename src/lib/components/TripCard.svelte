@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { TripRowWithItemCount, Parameter } from '$lib/client/api.js';
-  import ParamChip from './ParamChip.svelte';
+  import ParamChipList from './ParamChipList.svelte';
   import strings from '$lib/strings.js';
   import { formatDateRange } from '$lib/util/format-date.js';
 
@@ -11,8 +11,6 @@
   }
 
   let { trip, parametersById, maxChipsShown = 3 }: Props = $props();
-
-  let expanded = $state(false);
 
   const days = $derived(daysBetween(trip.start_date, trip.end_date));
 
@@ -36,9 +34,6 @@
       .filter((p): p is Parameter => !!p && !p.is_derived)
   );
 
-  const visibleChips = $derived(expanded ? paramChips : paramChips.slice(0, maxChipsShown));
-  const overflowCount = $derived(paramChips.length - maxChipsShown);
-
   function daysBetween(startISO: string, endISO: string): number {
     const start = new Date(startISO + 'T00:00:00Z');
     const end = new Date(endISO + 'T00:00:00Z');
@@ -53,28 +48,7 @@
     <span class="dates ltr-number">{dateRange}</span>
   </header>
 
-  {#if paramChips.length > 0}
-    <ul class="chips">
-      {#each visibleChips as p (p.id)}
-        <li><ParamChip label={p.display_name} /></li>
-      {/each}
-      {#if !expanded && overflowCount > 0}
-        <li>
-          <button
-            type="button"
-            class="more-btn"
-            onclick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              expanded = true;
-            }}
-          >
-            {strings.trips_list.and_more.replace('{count}', String(overflowCount))}
-          </button>
-        </li>
-      {/if}
-    </ul>
-  {/if}
+  <ParamChipList parameters={paramChips} maxShown={maxChipsShown} />
 
   <footer class="foot">
     <span class="count">{itemCountLabel}</span>
@@ -115,29 +89,6 @@
   .dates {
     font-size: var(--fs-meta);
     color: var(--color-text-muted);
-  }
-
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-  }
-
-  .more-btn {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 10px;
-    border-radius: var(--radius-pill);
-    background: transparent;
-    border: 1px dashed var(--color-border);
-    color: var(--color-text-muted);
-    font-size: var(--fs-meta);
-    cursor: pointer;
-  }
-
-  .more-btn:hover {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
   }
 
   .foot {
