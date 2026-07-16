@@ -31,14 +31,6 @@
   let toastTone = $state<'info' | 'success' | 'danger'>('info');
   let pendingDiff = $state<PatchTripResponse['diff'] | null>(null);
 
-  const itemDisplayNameById = $derived.by(() => {
-    const map = new Map<string, string>();
-    for (const r of pendingDiff?.to_be_removed ?? []) {
-      map.set(r.item_id, r.display_name);
-    }
-    return map;
-  });
-
   async function save() {
     submitting = true;
     try {
@@ -182,7 +174,6 @@
   added={pendingDiff?.added ?? []}
   updated={pendingDiff?.updated ?? []}
   toBeRemoved={pendingDiff?.to_be_removed ?? []}
-  displayNameById={itemDisplayNameById}
   onConfirm={confirmRemoval}
   onCancel={cancelRemoval}
 />

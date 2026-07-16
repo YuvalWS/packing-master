@@ -118,14 +118,17 @@ export interface PatchTripBody {
 }
 
 export interface PatchTripDiffAdded {
-  itemId: string;
+  item_id: string;
+  display_name: string;
   count: number;
 }
 
 export interface PatchTripDiffUpdated {
-  itemId: string;
-  newCount: number;
-  countPreserved: boolean;
+  item_id: string;
+  display_name: string;
+  previous_count: number;
+  new_count: number;
+  count_preserved: boolean;
 }
 
 export interface PatchTripDiffRemoved {
@@ -133,6 +136,7 @@ export interface PatchTripDiffRemoved {
   item_id: string;
   display_name: string;
   count: number;
+  is_checked: boolean;
 }
 
 export interface PatchTripResponse {

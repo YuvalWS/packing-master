@@ -95,6 +95,9 @@
     "updated_heading": "עודכנו",
     "removed_heading": "יוסרו אם תאשר",
     "count_preserved_note": "(נשמר ידנית: {count})",
+    "was_checked_tag": "סומן",
+    "checked_warning_one": "אחד מהם כבר סימנת",
+    "checked_warning_many": "{count} מהם כבר סימנת",
     "confirm": "אשר ועדכן",
     "cancel": "השאר כפי שזה"
   },

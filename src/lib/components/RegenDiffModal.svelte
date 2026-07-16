@@ -13,20 +13,13 @@
     added: PatchTripDiffAdded[];
     updated: PatchTripDiffUpdated[];
     toBeRemoved: PatchTripDiffRemoved[];
-    displayNameById: Map<string, string>;
     onConfirm: (selectedRemovals: PatchTripDiffRemoved[]) => void;
     onCancel: () => void;
   }
 
-  let {
-    open,
-    added,
-    updated,
-    toBeRemoved,
-    displayNameById,
-    onConfirm,
-    onCancel
-  }: Props = $props();
+  let { open, added, updated, toBeRemoved, onConfirm, onCancel }: Props = $props();
+
+  const checkedRemovalCount = $derived(toBeRemoved.filter((r) => r.is_checked).length);
 
   // svelte-ignore state_referenced_locally
   let selectedRowIds = $state<Set<number>>(new Set(toBeRemoved.map((r) => r.row_id ?? -1)));
@@ -55,9 +48,9 @@
     <section class="diff-section">
       <h3><Plus size={16} aria-hidden="true" /> {strings.regen.added_heading}</h3>
       <ul>
-        {#each added as a (a.itemId)}
+        {#each added as a (a.item_id)}
           <li>
-            <span class="name">{displayNameById.get(a.itemId) ?? a.itemId}</span>
+            <span class="name">{a.display_name}</span>
             <span class="count ltr-number">× {a.count}</span>
           </li>
         {/each}
@@ -69,12 +62,15 @@
     <section class="diff-section">
       <h3><RefreshCw size={16} aria-hidden="true" /> {strings.regen.updated_heading}</h3>
       <ul>
-        {#each updated as u (u.itemId)}
+        {#each updated as u (u.item_id)}
           <li>
-            <span class="name">{displayNameById.get(u.itemId) ?? u.itemId}</span>
-            <span class="count ltr-number">× {u.newCount}</span>
-            {#if u.countPreserved}
-              <span class="note">{strings.regen.count_preserved_note.replace('{count}', String(u.newCount))}</span>
+            <span class="name">{u.display_name}</span>
+            {#if u.count_preserved}
+              <span class="note">{strings.regen.count_preserved_note.replace('{count}', String(u.new_count))}</span>
+            {:else if u.previous_count !== u.new_count}
+              <span class="count ltr-number">{u.previous_count} → {u.new_count}</span>
+            {:else}
+              <span class="count ltr-number">× {u.new_count}</span>
             {/if}
           </li>
         {/each}
@@ -97,11 +93,21 @@
                 onchange={() => rowId >= 0 && toggleRow(rowId)}
               />
               <span class="name">{r.display_name}</span>
+              {#if r.is_checked}
+                <span class="checked-tag">✓ {strings.regen.was_checked_tag}</span>
+              {/if}
               <span class="count ltr-number">× {r.count}</span>
             </label>
           </li>
         {/each}
       </ul>
+      {#if checkedRemovalCount > 0}
+        <p class="checked-warning">
+          {checkedRemovalCount === 1
+            ? strings.regen.checked_warning_one
+            : strings.regen.checked_warning_many.replace('{count}', String(checkedRemovalCount))}
+        </p>
+      {/if}
     </section>
   {/if}
 
@@ -170,6 +176,18 @@
   .note {
     font-size: var(--fs-meta);
     color: var(--color-text-muted);
+  }
+
+  .checked-tag {
+    font-size: var(--fs-meta);
+    color: var(--color-warning);
+    white-space: nowrap;
+  }
+
+  .checked-warning {
+    margin-block-start: var(--space-2);
+    font-size: var(--fs-meta);
+    color: var(--color-warning);
   }
 
   .ghost {

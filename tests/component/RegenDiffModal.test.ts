@@ -7,8 +7,8 @@ import strings from '../../src/lib/strings.js';
 afterEach(cleanup);
 
 const removed: PatchTripDiffRemoved[] = [
-  { row_id: 11, item_id: 'item_a', display_name: 'Removed A', count: 2 },
-  { row_id: 12, item_id: 'item_b', display_name: 'Removed B', count: 1 }
+  { row_id: 11, item_id: 'item_a', display_name: 'Removed A', count: 2, is_checked: false },
+  { row_id: 12, item_id: 'item_b', display_name: 'Removed B', count: 1, is_checked: false }
 ];
 
 describe('RegenDiffModal', () => {
@@ -19,7 +19,6 @@ describe('RegenDiffModal', () => {
         added: [],
         updated: [],
         toBeRemoved: removed,
-        displayNameById: new Map(),
         onConfirm: vi.fn(),
         onCancel: vi.fn()
       }
@@ -27,17 +26,21 @@ describe('RegenDiffModal', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('renders the three sections when open and all have content', () => {
+  it('renders the three sections with payload display names', () => {
     render(RegenDiffModal, {
       props: {
         open: true,
-        added: [{ itemId: 'add_1', count: 1 }],
-        updated: [{ itemId: 'upd_1', newCount: 2, countPreserved: false }],
+        added: [{ item_id: 'add_1', display_name: 'Added Name', count: 1 }],
+        updated: [
+          {
+            item_id: 'upd_1',
+            display_name: 'Updated Name',
+            previous_count: 1,
+            new_count: 2,
+            count_preserved: false
+          }
+        ],
         toBeRemoved: removed,
-        displayNameById: new Map([
-          ['add_1', 'Added Name'],
-          ['upd_1', 'Updated Name']
-        ]),
         onConfirm: vi.fn(),
         onCancel: vi.fn()
       }
@@ -47,6 +50,85 @@ describe('RegenDiffModal', () => {
     expect(screen.getByText(strings.regen.removed_heading)).toBeInTheDocument();
     expect(screen.getByText('Added Name')).toBeInTheDocument();
     expect(screen.getByText('Updated Name')).toBeInTheDocument();
+    expect(screen.queryByText('add_1')).not.toBeInTheDocument();
+    expect(screen.queryByText('upd_1')).not.toBeInTheDocument();
+  });
+
+  it('updated rows show old → new counts, preserved rows show the manual note', () => {
+    render(RegenDiffModal, {
+      props: {
+        open: true,
+        added: [],
+        updated: [
+          {
+            item_id: 'upd_changed',
+            display_name: 'Changed',
+            previous_count: 4,
+            new_count: 6,
+            count_preserved: false
+          },
+          {
+            item_id: 'upd_preserved',
+            display_name: 'Preserved',
+            previous_count: 99,
+            new_count: 99,
+            count_preserved: true
+          },
+          {
+            item_id: 'upd_same',
+            display_name: 'Same',
+            previous_count: 3,
+            new_count: 3,
+            count_preserved: false
+          }
+        ],
+        toBeRemoved: [],
+        onConfirm: vi.fn(),
+        onCancel: vi.fn()
+      }
+    });
+    expect(screen.getByText('4 → 6')).toBeInTheDocument();
+    expect(
+      screen.getByText(strings.regen.count_preserved_note.replace('{count}', '99'))
+    ).toBeInTheDocument();
+    expect(screen.getByText('× 3')).toBeInTheDocument();
+  });
+
+  it('flags checked removals and shows the summary warning', () => {
+    render(RegenDiffModal, {
+      props: {
+        open: true,
+        added: [],
+        updated: [],
+        toBeRemoved: [
+          { row_id: 11, item_id: 'item_a', display_name: 'Removed A', count: 2, is_checked: true },
+          { row_id: 12, item_id: 'item_b', display_name: 'Removed B', count: 1, is_checked: true },
+          { row_id: 13, item_id: 'item_c', display_name: 'Removed C', count: 1, is_checked: false }
+        ],
+        onConfirm: vi.fn(),
+        onCancel: vi.fn()
+      }
+    });
+    expect(screen.getAllByText(`✓ ${strings.regen.was_checked_tag}`)).toHaveLength(2);
+    expect(
+      screen.getByText(strings.regen.checked_warning_many.replace('{count}', '2'))
+    ).toBeInTheDocument();
+  });
+
+  it('uses the singular warning for a single checked removal', () => {
+    render(RegenDiffModal, {
+      props: {
+        open: true,
+        added: [],
+        updated: [],
+        toBeRemoved: [
+          { row_id: 11, item_id: 'item_a', display_name: 'Removed A', count: 2, is_checked: true }
+        ],
+        onConfirm: vi.fn(),
+        onCancel: vi.fn()
+      }
+    });
+    expect(screen.getByText(strings.regen.checked_warning_one)).toBeInTheDocument();
   });
 
   it('all removal checkboxes are checked by default', () => {
@@ -56,7 +138,6 @@ describe('RegenDiffModal', () => {
         added: [],
         updated: [],
         toBeRemoved: removed,
-        displayNameById: new Map(),
         onConfirm: vi.fn(),
         onCancel: vi.fn()
       }
@@ -74,7 +155,6 @@ describe('RegenDiffModal', () => {
         added: [],
         updated: [],
         toBeRemoved: removed,
-        displayNameById: new Map(),
         onConfirm,
         onCancel: vi.fn()
       }
@@ -96,7 +176,6 @@ describe('RegenDiffModal', () => {
         added: [],
         updated: [],
         toBeRemoved: removed,
-        displayNameById: new Map(),
         onConfirm: vi.fn(),
         onCancel
       }

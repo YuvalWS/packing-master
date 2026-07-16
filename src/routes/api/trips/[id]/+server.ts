@@ -124,23 +124,37 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
   await tripItemsQ.applyDiff(locals.pool, tripId, diff);
 
   const trip = await tripsQ.getById(locals.pool, tripId);
-  const removedById = new Map(existingItems.map((r) => [r.item_id ?? `__row_${r.id}`, r]));
+  const catalogById = new Map(items.map((i) => [i.id, i]));
+  const existingByItemId = new Map(existingItems.map((r) => [r.item_id ?? `__row_${r.id}`, r]));
+
+  const added = diff.added.map((g) => ({
+    item_id: g.itemId,
+    display_name: catalogById.get(g.itemId)?.display_name ?? g.itemId,
+    count: g.count
+  }));
+  const updated = diff.updated.map((u) => ({
+    item_id: u.itemId,
+    display_name: catalogById.get(u.itemId)?.display_name ?? u.itemId,
+    previous_count: u.previousCount,
+    new_count: u.newCount,
+    count_preserved: u.countPreserved
+  }));
   const toBeRemoved = diff.toBeRemoved.map((r) => {
-    const row = removedById.get(r.itemId);
-    const cat = items.find((i) => i.id === r.itemId);
+    const row = existingByItemId.get(r.itemId);
     return {
       row_id: row?.id ?? null,
       item_id: r.itemId,
-      display_name: cat?.display_name ?? r.itemId,
-      count: r.count
+      display_name: catalogById.get(r.itemId)?.display_name ?? r.itemId,
+      count: r.count,
+      is_checked: row?.is_checked ?? false
     };
   });
 
   return ok({
     trip,
     diff: {
-      added: diff.added,
-      updated: diff.updated,
+      added,
+      updated,
       to_be_removed: toBeRemoved
     }
   });
