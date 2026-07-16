@@ -28,6 +28,11 @@ test('switching to by-bag persists across reload', async ({ page, request }) => 
   await byBagTab.click();
   await expect(byBagTab).toHaveAttribute('aria-selected', 'true');
 
+  // Bag ids render via the Hebrew labels map, not raw ids.
+  await expect(page.getByText(strings.view.bags.main_bag)).toBeVisible();
+  await expect(page.getByText(strings.view.bags.small_bag)).toBeVisible();
+  await expect(page.getByText(strings.view.no_bag)).toBeVisible();
+
   await reload(page);
   await expect(page.getByRole('tab', { name: strings.view.by_bag })).toHaveAttribute(
     'aria-selected',

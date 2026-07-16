@@ -193,6 +193,7 @@ export interface Api {
     key: string | number,
     body: PatchTripItemBody
   ): Promise<{ item: DbTripItemRow }>;
+  deleteTripItem(tripId: number, key: string | number): Promise<{ deleted: true }>;
   toggleKitComponent(
     tripId: number,
     itemId: string,
@@ -226,6 +227,12 @@ export function makeApi(fetcher: Fetcher = fetch): Api {
         'PATCH',
         `/api/trips/${tripId}/items/${encodeURIComponent(String(key))}`,
         body
+      ),
+    deleteTripItem: (tripId, key) =>
+      request<{ deleted: true }>(
+        fetcher,
+        'DELETE',
+        `/api/trips/${tripId}/items/${encodeURIComponent(String(key))}`
       ),
     toggleKitComponent: (tripId, itemId, componentId) =>
       request<{ component: KitComponentRow }>(

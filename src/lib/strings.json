@@ -71,14 +71,32 @@
     "toggle_check": "סמן את {name}",
     "increment": "הוסף",
     "decrement": "הפחת",
-    "row_menu": "פעולות נוספות"
+    "row_menu": "פעולות נוספות",
+    "expand_kit": "הצג פריטי ערכה",
+    "has_note": "יש הערה"
   },
   "view": {
     "by_category": "לפי קטגוריה",
     "by_bag": "לפי תיק",
     "checked_to_bottom": "מסומנים בתחתית",
     "no_bag": "ללא תיק",
-    "bag_main": "תיק ראשי"
+    "bags": {
+      "main_bag": "תיק ראשי",
+      "small_bag": "תיק קטן",
+      "suitcase": "מזוודה",
+      "carry_on": "תיק עלייה למטוס"
+    }
+  },
+  "row_menu": {
+    "title": "פעולות",
+    "split_bags": "פיצול בין תיקים",
+    "note": "הערה",
+    "note_placeholder": "כתוב הערה לפריט…",
+    "delete": "מחק",
+    "delete_confirm": "למחוק את הפריט?",
+    "split_total_hint": "סה\"כ חייב להיות {count}",
+    "saved_toast": "נשמר",
+    "deleted_toast": "הפריט הוסר"
   },
   "settings": {
     "title": "הגדרות טיול",

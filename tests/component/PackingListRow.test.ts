@@ -66,4 +66,43 @@ describe('PackingListRow', () => {
     await fireEvent.click(screen.getByRole('button', { name: strings.a11y_row.increment }));
     expect(onCountChange).toHaveBeenCalledWith(4);
   });
+
+  it('renders a row-menu button only when onOpenMenu is provided, and fires it', async () => {
+    const { unmount } = render(PackingListRow, {
+      props: { item: row(), onToggleCheck: vi.fn(), onCountChange: vi.fn() }
+    });
+    expect(
+      screen.queryByRole('button', { name: strings.a11y_row.row_menu })
+    ).not.toBeInTheDocument();
+    unmount();
+
+    const onOpenMenu = vi.fn();
+    render(PackingListRow, {
+      props: { item: row(), onToggleCheck: vi.fn(), onCountChange: vi.fn(), onOpenMenu }
+    });
+    await fireEvent.click(screen.getByRole('button', { name: strings.a11y_row.row_menu }));
+    expect(onOpenMenu).toHaveBeenCalledOnce();
+  });
+
+  it('shows a note indicator when the item has notes', () => {
+    render(PackingListRow, {
+      props: { item: row({ notes: 'remember this' }), onToggleCheck: vi.fn(), onCountChange: vi.fn() }
+    });
+    expect(screen.getByLabelText(strings.a11y_row.has_note)).toBeInTheDocument();
+  });
+
+  it('split rows show the per-bag count with a disabled stepper', () => {
+    render(PackingListRow, {
+      props: {
+        item: row({ count: 5 }),
+        displayCount: 2,
+        stepperDisabled: true,
+        onToggleCheck: vi.fn(),
+        onCountChange: vi.fn()
+      }
+    });
+    expect(screen.getByText('2')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: strings.a11y_row.increment })).toBeDisabled();
+    expect(screen.getByRole('button', { name: strings.a11y_row.decrement })).toBeDisabled();
+  });
 });

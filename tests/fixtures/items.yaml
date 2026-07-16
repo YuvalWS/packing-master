@@ -2,6 +2,7 @@ items:
   # Always present.
   - id: item_always
     display_name: Always
+    default_bag: main_bag
     include_when: true
     quantity:
       fixed: 1
@@ -9,6 +10,7 @@ items:
   # Per-day clothing.
   - id: item_per_day
     display_name: Per-day
+    default_bag: small_bag
     include_when: true
     quantity:
       per_day: 1

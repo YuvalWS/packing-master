@@ -67,7 +67,7 @@ The e2e suite drives every key flow (empty list, new-trip, packing-check, kit ex
 ## Data layout
 
 - `seed/sample/` — generic placeholder catalog (committed). Useful for fresh-clone bootstraps and documenting YAML shape.
-- `seed/local/` — your personal catalog (**gitignored**). Produced by `extract:excel` or hand-edited.
+- `seed/local/` — your personal catalog (**gitignored**). Produced by `extract:excel` or hand-edited. Use bag ids from the `view.bags` map in `src/lib/strings.json` (`main_bag`, `small_bag`, `suitcase`, `carry_on`) so the UI can render Hebrew bag names; unknown ids fall back to the raw id.
 - `tests/fixtures/` — pure mock data used by unit, integration, and e2e tests.
 - Source spreadsheet — stays outside the repo. Drop it into `./.data/source.xlsx` (gitignored) and `PACKING_EXCEL_PATH=/data/source.xlsx` reaches it from the container.
 

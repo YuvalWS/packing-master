@@ -12,12 +12,14 @@
   import BagFilterToggle from '$lib/components/BagFilterToggle.svelte';
   import CheckedToBottomToggle from '$lib/components/CheckedToBottomToggle.svelte';
   import ManualAddSheet from '$lib/components/ManualAddSheet.svelte';
+  import RowActionsSheet from '$lib/components/RowActionsSheet.svelte';
   import Fab from '$lib/components/Fab.svelte';
   import { Plus } from '@lucide/svelte';
   import type { EnrichedItem, KitComponentRow as KitComponentRowState } from '$lib/client/api.js';
   import { makeApi } from '$lib/client/api.js';
   import { loadPrefs, savePrefs, type ViewMode } from '$lib/client/view-prefs.js';
   import { formatDateRange } from '$lib/util/format-date.js';
+  import { bagLabel } from '$lib/util/bag-label.js';
   import strings from '$lib/strings.js';
 
   interface Props {
@@ -34,6 +36,7 @@
   let toastTone = $state<'info' | 'success' | 'danger'>('info');
   let expandedKits = $state<Set<number>>(new Set());
   let addSheetOpen = $state(false);
+  let menuItem = $state<EnrichedItem | null>(null);
 
   const existingItemIds = $derived(
     new Set(items.map((it) => it.item_id).filter((id): id is string => !!id))
@@ -97,20 +100,38 @@
     return { totalRequired, checkedRequired, uncheckedOptional };
   });
 
+  interface DisplayRow {
+    item: EnrichedItem;
+    key: string;
+    displayCount?: number;
+    split?: boolean;
+  }
+
   const grouped = $derived.by(() => {
-    const groups = new Map<string, EnrichedItem[]>();
+    const groups = new Map<string, DisplayRow[]>();
+    const push = (groupId: string, row: DisplayRow) => {
+      const list = groups.get(groupId) ?? [];
+      list.push(row);
+      groups.set(groupId, list);
+    };
     for (const it of items) {
-      const key = groupKey(it);
-      const list = groups.get(key) ?? [];
-      list.push(it);
-      groups.set(key, list);
+      const distribution = it.bag_distribution as Record<string, number> | null;
+      if (viewMode === 'bag' && distribution) {
+        for (const [bag, n] of Object.entries(distribution)) {
+          if (n > 0) {
+            push(bag, { item: it, key: `${it.row_id}:${bag}`, displayCount: n, split: true });
+          }
+        }
+      } else {
+        push(groupKey(it), { item: it, key: String(it.row_id) });
+      }
     }
     for (const list of groups.values()) {
       list.sort((a, b) => {
-        if (checkedToBottom && a.is_checked !== b.is_checked) {
-          return a.is_checked ? 1 : -1;
+        if (checkedToBottom && a.item.is_checked !== b.item.is_checked) {
+          return a.item.is_checked ? 1 : -1;
         }
-        return a.display_name.localeCompare(b.display_name);
+        return a.item.display_name.localeCompare(b.item.display_name);
       });
     }
     return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
@@ -126,12 +147,20 @@
   function groupLabel(rawKey: string): string {
     if (viewMode === 'bag') {
       if (rawKey === '__no_bag') return strings.view.no_bag;
-      if (rawKey === 'main_bag') return strings.view.bag_main;
-      return rawKey;
+      return bagLabel(rawKey);
     }
     if (rawKey === '__no_category') return strings.packing_list.category_uncategorized;
     return rawKey;
   }
+
+  const knownBags = $derived.by(() => {
+    const set = new Set<string>();
+    for (const it of items) {
+      if (it.default_bag) set.add(it.default_bag);
+      for (const key of Object.keys(it.bag_distribution ?? {})) set.add(key);
+    }
+    return [...set];
+  });
 
   function showToast(msg: string, tone: 'info' | 'success' | 'danger' = 'info') {
     toastTone = tone;
@@ -150,6 +179,46 @@
     } catch {
       Object.assign(item, previous);
       items = items.map((it) => (it.row_id === item.row_id ? { ...previous } : it));
+      showToast(strings.packing_list.save_failed, 'danger');
+    }
+  }
+
+  function itemKey(item: EnrichedItem): string | number {
+    return item.item_id ?? item.row_id;
+  }
+
+  async function saveNote(item: EnrichedItem, notes: string | null) {
+    try {
+      const api = makeApi();
+      await api.patchTripItem(data.trip.id, itemKey(item), { notes });
+      menuItem = null;
+      showToast(strings.row_menu.saved_toast, 'success');
+      await invalidate(`trip:${data.trip.id}`);
+    } catch {
+      showToast(strings.packing_list.save_failed, 'danger');
+    }
+  }
+
+  async function saveSplit(item: EnrichedItem, distribution: Record<string, number> | null) {
+    try {
+      const api = makeApi();
+      await api.patchTripItem(data.trip.id, itemKey(item), { bag_distribution: distribution });
+      menuItem = null;
+      showToast(strings.row_menu.saved_toast, 'success');
+      await invalidate(`trip:${data.trip.id}`);
+    } catch {
+      showToast(strings.packing_list.save_failed, 'danger');
+    }
+  }
+
+  async function deleteManualItem(item: EnrichedItem) {
+    try {
+      const api = makeApi();
+      await api.deleteTripItem(data.trip.id, item.row_id);
+      menuItem = null;
+      showToast(strings.row_menu.deleted_toast, 'success');
+      await invalidate(`trip:${data.trip.id}`);
+    } catch {
       showToast(strings.packing_list.save_failed, 'danger');
     }
   }
@@ -245,7 +314,8 @@
   <div class="groups">
     {#each grouped as [rawKey, rows] (rawKey)}
       <CategoryGroup title={groupLabel(rawKey)} count={rows.length}>
-        {#each rows as item (item.row_id)}
+        {#each rows as row (row.key)}
+          {@const item = row.item}
           {@const expanded = expandedKits.has(item.row_id)}
           {@const partial = kitPartial(item)}
           <PackingListRow
@@ -253,9 +323,12 @@
             {partial}
             expandable={item.is_kit && !!item.kit_contents}
             {expanded}
+            displayCount={row.displayCount}
+            stepperDisabled={row.split}
             onToggleCheck={() => patchItem(item, { is_checked: !item.is_checked })}
             onCountChange={(next) => patchItem(item, { count: next })}
             onToggleExpand={() => toggleKitExpand(item.row_id)}
+            onOpenMenu={() => (menuItem = item)}
           />
           {#if item.is_kit && item.kit_contents && expanded}
             <ul class="kit-components" aria-label={item.display_name}>
@@ -292,6 +365,15 @@
   }}
   onClose={() => (addSheetOpen = false)}
   onError={(msg) => showToast(msg, 'danger')}
+/>
+
+<RowActionsSheet
+  item={menuItem}
+  {knownBags}
+  onSaveNote={saveNote}
+  onSaveSplit={saveSplit}
+  onDelete={deleteManualItem}
+  onClose={() => (menuItem = null)}
 />
 
 <Toast message={toastMsg} tone={toastTone} onDismiss={() => (toastMsg = null)} />

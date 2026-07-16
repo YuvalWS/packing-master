@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Check, ChevronDown } from '@lucide/svelte';
+  import { Check, ChevronDown, MoreHorizontal, StickyNote } from '@lucide/svelte';
   import Stepper from './Stepper.svelte';
   import type { EnrichedItem } from '$lib/client/api.js';
   import strings from '$lib/strings.js';
@@ -9,9 +9,13 @@
     partial?: boolean;
     expandable?: boolean;
     expanded?: boolean;
+    /* Overrides the stepper value for per-bag rows of a split item. */
+    displayCount?: number;
+    stepperDisabled?: boolean;
     onToggleCheck: () => void;
     onCountChange: (next: number) => void;
     onToggleExpand?: () => void;
+    onOpenMenu?: () => void;
   }
 
   let {
@@ -19,9 +23,12 @@
     partial = false,
     expandable = false,
     expanded = false,
+    displayCount,
+    stepperDisabled = false,
     onToggleCheck,
     onCountChange,
-    onToggleExpand
+    onToggleExpand,
+    onOpenMenu
   }: Props = $props();
 
   const checkLabel = $derived(strings.a11y_row.toggle_check.replace('{name}', item.display_name));
@@ -54,13 +61,19 @@
       {#if item.is_manual}
         <span class="tag tag-manual">{strings.packing_list.manual_tag}</span>
       {/if}
+      {#if item.notes}
+        <span class="note-dot" title={strings.a11y_row.has_note} aria-label={strings.a11y_row.has_note}>
+          <StickyNote size={14} />
+        </span>
+      {/if}
     </div>
   </div>
 
   <div class="actions">
     <Stepper
-      value={item.count}
+      value={displayCount ?? item.count}
       min={1}
+      disabled={stepperDisabled}
       onChange={onCountChange}
     />
     {#if item.count_was_edited}
@@ -72,10 +85,20 @@
         class="expand-btn"
         class:expanded
         aria-expanded={expanded}
-        aria-label={strings.a11y_row.row_menu}
+        aria-label={strings.a11y_row.expand_kit}
         onclick={onToggleExpand}
       >
         <ChevronDown size={18} />
+      </button>
+    {/if}
+    {#if onOpenMenu}
+      <button
+        type="button"
+        class="menu-btn"
+        aria-label={strings.a11y_row.row_menu}
+        onclick={onOpenMenu}
+      >
+        <MoreHorizontal size={18} />
       </button>
     {/if}
   </div>
@@ -185,6 +208,28 @@
 
   .checkbox.partial {
     border-color: var(--color-primary);
+  }
+
+  .note-dot {
+    display: inline-flex;
+    align-items: center;
+    color: var(--color-text-muted);
+  }
+
+  .menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+    cursor: pointer;
+  }
+
+  .menu-btn:hover {
+    color: var(--color-primary);
+    background: var(--color-primary-soft);
   }
 
   .expand-btn {
