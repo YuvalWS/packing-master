@@ -65,6 +65,15 @@
     }
   }
 
+  /* Clear the permanent sidebar and match the content column width. */
+  @media (min-width: 960px) {
+    .sheet {
+      inset-inline-start: var(--drawer-width);
+      max-width: var(--layout-max-width);
+      margin-inline: auto;
+    }
+  }
+
   header {
     display: flex;
     align-items: center;

@@ -37,7 +37,7 @@
     position: fixed;
     inset-block-end: var(--space-5);
     inset-inline-start: 50%;
-    transform: translateX(50%);
+    transform: translateX(-50%);
     z-index: var(--z-toast);
     padding: var(--space-3) var(--space-5);
     border-radius: var(--radius-pill);
@@ -48,8 +48,16 @@
     pointer-events: none;
   }
 
+  /* inset-inline-start resolves to `right` in RTL; centering needs +50%. */
   :global(html[dir='rtl']) .toast {
-    transform: translateX(-50%);
+    transform: translateX(50%);
+  }
+
+  /* Center within the content area beside the permanent sidebar. */
+  @media (min-width: 960px) {
+    .toast {
+      inset-inline-start: calc(50% + (var(--drawer-width) / 2));
+    }
   }
 
   .toast[data-tone='danger'] {

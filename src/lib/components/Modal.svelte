@@ -52,7 +52,7 @@
     position: fixed;
     inset-block-start: 50%;
     inset-inline-start: 50%;
-    transform: translate(50%, -50%);
+    transform: translate(-50%, -50%);
     z-index: var(--z-modal);
     width: min(560px, calc(100vw - 32px));
     max-height: calc(100vh - 64px);
@@ -64,8 +64,18 @@
     overflow: hidden;
   }
 
+  /* inset-inline-start resolves to `right` in RTL; transforms are
+     direction-agnostic, so centering needs +50% there, not -50%. */
   :global(html[dir='rtl']) .modal {
-    transform: translate(-50%, -50%);
+    transform: translate(50%, -50%);
+  }
+
+  /* The permanent sidebar (≥960px) shifts the content area by the drawer
+     width; center overlays in the remaining viewport, not the full one. */
+  @media (min-width: 960px) {
+    .modal {
+      inset-inline-start: calc(50% + (var(--drawer-width) / 2));
+    }
   }
 
   header {

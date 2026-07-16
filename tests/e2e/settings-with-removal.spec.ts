@@ -42,12 +42,9 @@ test('narrowing parameters surfaces the regen diff modal; confirming drops rows'
   await page.getByRole('button', { name: strings.common.save }).click();
 
   const modal = page.getByRole('dialog', { name: strings.regen.title });
-  if ((await modal.count()) === 0) {
-    test.skip(true, 'no items removed by this parameter change in this fixture');
-    return;
-  }
+  await expect(modal).toBeVisible();
   await modal.getByRole('button', { name: strings.regen.confirm }).click();
-  await expect(page).toHaveURL(new RegExp(`/trips/${trip.id}(/|$)`));
+  await expect(page).toHaveURL(new RegExp(`/trips/${trip.id}$`));
 
   const after = await request.get(`/api/trips/${trip.id}`);
   const afterBody = (await after.json()) as { items: { item_id: string | null }[] };
@@ -92,10 +89,7 @@ test('checked items slated for removal are flagged in the modal', async ({ page,
   await page.getByRole('button', { name: strings.common.save }).click();
 
   const modal = page.getByRole('dialog', { name: strings.regen.title });
-  if ((await modal.count()) === 0) {
-    test.skip(true, 'no items removed by this parameter change in this fixture');
-    return;
-  }
+  await expect(modal).toBeVisible();
 
   await expect(modal.getByText(strings.regen.was_checked_tag).first()).toBeVisible();
   const warningFragment = strings.regen.checked_warning_many.replace('{count}', '').trim();
