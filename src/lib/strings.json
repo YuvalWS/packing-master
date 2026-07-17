@@ -149,6 +149,10 @@
   "items_catalog": {
     "search_placeholder": "חפש פריט בקטלוג…",
     "no_results": "לא נמצאו פריטים",
+    "filter_category": "קטגוריה",
+    "filter_parameter": "פרמטר",
+    "filter_all": "הכל",
+    "source_note": "עריכת הקטלוג נעשית בקובצי ה-YAML בתיקיית",
     "field_id": "מזהה",
     "field_category": "קטגוריה",
     "field_default_bag": "תיק ברירת מחדל",

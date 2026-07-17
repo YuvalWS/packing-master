@@ -2,6 +2,9 @@
   import type { PageData } from './$types.js';
   import type { Item } from '$lib/client/api.js';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import { formatCondition } from '$lib/util/format-condition.js';
+  import { formatQuantity } from '$lib/util/format-quantity.js';
+  import { conditionParamIds } from '$lib/util/condition-params.js';
   import strings from '$lib/strings.js';
 
   interface Props {
@@ -11,13 +14,25 @@
   let { data }: Props = $props();
 
   let search = $state('');
+  let categoryFilter = $state('');
+  let parameterFilter = $state('');
+
+  const categories = $derived(
+    [...new Set(data.items.map((i) => i.category).filter((c): c is string => !!c))].sort()
+  );
 
   const filtered = $derived.by(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return data.items;
-    return data.items.filter(
-      (i) => i.display_name.toLowerCase().includes(q) || i.id.toLowerCase().includes(q)
-    );
+    return data.items.filter((i) => {
+      if (q && !i.display_name.toLowerCase().includes(q) && !i.id.toLowerCase().includes(q)) {
+        return false;
+      }
+      if (categoryFilter && i.category !== categoryFilter) return false;
+      if (parameterFilter && !conditionParamIds(i.include_when).includes(parameterFilter)) {
+        return false;
+      }
+      return true;
+    });
   });
 
   const grouped = $derived.by(() => {
@@ -36,6 +51,11 @@
 </script>
 
 <section class="screen">
+  <h2 class="title">
+    {strings.nav.items}
+    <span class="count ltr-number">({filtered.length})</span>
+  </h2>
+
   <input
     type="search"
     class="search"
@@ -43,6 +63,27 @@
     bind:value={search}
     aria-label={strings.items_catalog.search_placeholder}
   />
+
+  <div class="filters">
+    <label class="filter">
+      <span>{strings.items_catalog.filter_category}</span>
+      <select bind:value={categoryFilter}>
+        <option value="">{strings.items_catalog.filter_all}</option>
+        {#each categories as c (c)}
+          <option value={c}>{c}</option>
+        {/each}
+      </select>
+    </label>
+    <label class="filter">
+      <span>{strings.items_catalog.filter_parameter}</span>
+      <select bind:value={parameterFilter}>
+        <option value="">{strings.items_catalog.filter_all}</option>
+        {#each data.parameters.filter((p) => !p.is_derived) as p (p.id)}
+          <option value={p.id}>{p.display_name}</option>
+        {/each}
+      </select>
+    </label>
+  </div>
 
   {#if filtered.length === 0}
     <EmptyState title={strings.items_catalog.no_results} />
@@ -55,8 +96,12 @@
             {#each items as item (item.id)}
               <li>
                 <a class="item" href="/items/{item.id}">
-                  <span class="name">{item.display_name}</span>
-                  <span class="id ltr-number">{item.id}</span>
+                  <span class="row-head">
+                    <span class="name">{item.display_name}</span>
+                    <span class="id ltr-number">{item.id}</span>
+                  </span>
+                  <span class="meta">{formatQuantity(item.quantity)}</span>
+                  <span class="meta">{formatCondition(item.include_when)}</span>
                 </a>
               </li>
             {/each}
@@ -114,15 +159,61 @@
     gap: var(--space-1);
   }
 
+  .title {
+    font-size: var(--fs-title);
+    font-weight: 700;
+  }
+
+  .count {
+    color: var(--color-text-muted);
+    font-weight: 400;
+    font-size: var(--fs-row);
+  }
+
+  .filters {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  .filter {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--fs-meta);
+    color: var(--color-text-muted);
+  }
+
+  .filter select {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: var(--fs-meta);
+  }
+
   .item {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: var(--space-1);
     padding: var(--space-3) var(--space-4);
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     color: var(--color-text);
+  }
+
+  .row-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .meta {
+    font-size: var(--fs-meta);
+    color: var(--color-text-muted);
   }
 
   .item:hover {

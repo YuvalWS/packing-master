@@ -3,6 +3,7 @@
   import { ChevronLeft } from '@lucide/svelte';
   import { formatCondition } from '$lib/util/format-condition.js';
   import { formatQuantity } from '$lib/util/format-quantity.js';
+  import { bagLabel } from '$lib/util/bag-label.js';
   import strings from '$lib/strings.js';
 
   interface Props {
@@ -31,7 +32,7 @@
   </div>
   <div class="field">
     <dt>{strings.items_catalog.field_default_bag}</dt>
-    <dd>{item.default_bag ?? '—'}</dd>
+    <dd>{item.default_bag ? bagLabel(item.default_bag) : '—'}</dd>
   </div>
   <div class="field">
     <dt>{strings.items_catalog.field_optional}</dt>
@@ -76,7 +77,17 @@
   {/if}
 </dl>
 
+<p class="source-note">
+  {strings.items_catalog.source_note} <span class="ltr-number">seed/</span>
+</p>
+
 <style>
+  .source-note {
+    margin-block-start: var(--space-4);
+    font-size: var(--fs-meta);
+    color: var(--color-text-muted);
+  }
+
   .back {
     display: inline-flex;
     align-items: center;
