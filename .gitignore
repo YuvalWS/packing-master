@@ -29,11 +29,6 @@ coverage/
 playwright-report/
 test-results/
 
-# Design docs (gitignored until scrubbed of personal data)
-CLAUDE.md
-DESIGN.md
-context.md
-
 # Editor
 .vscode/
 .idea/

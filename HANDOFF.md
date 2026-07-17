@@ -9,9 +9,10 @@ UI/UX gap-closure pass that brought every screen in line with the spec (DESIGN.m
 Deliberate divergences from the spec are documented in **DESIGN.md §12** — read that
 before "fixing" something that looks off-spec, it may be intentional.
 
-Note: `CLAUDE.md`, `DESIGN.md`, and `context.md` are **gitignored** (they contain
-personal context; see `.gitignore` § "Design docs"). They exist only on this machine —
-do not expect them on a fresh clone, and never commit them.
+Note: `CLAUDE.md`, `DESIGN.md`, and `context.md` are committed and fully English
+(translated and scrubbed of personal specifics in July 2026). The personal catalog —
+real item names, templates, and parameters, all in Hebrew — lives only in the
+gitignored `seed/local/` and the source spreadsheet outside the repo.
 
 Test surface (all green as of the last commit):
 
