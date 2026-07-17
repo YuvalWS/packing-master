@@ -25,6 +25,7 @@
   import { loadPrefs, savePrefs, type ViewMode } from '$lib/client/view-prefs.js';
   import { formatDateRange } from '$lib/util/format-date.js';
   import { bagLabel } from '$lib/util/bag-label.js';
+  import { tripDisplayName } from '$lib/util/trip-name.js';
   import { prefersReducedMotion } from '$lib/util/reduced-motion.js';
   import { slide } from 'svelte/transition';
   import strings from '$lib/strings.js';
@@ -322,7 +323,7 @@
 <header class="trip-head">
   <div class="title-row">
     <h2 class="trip-name">
-      {data.trip.name ?? formatDateRange(data.trip.start_date, data.trip.end_date)}
+      {tripDisplayName(data.trip, parametersById)}
     </h2>
     <div class="title-actions">
       <a

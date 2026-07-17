@@ -1,26 +1,27 @@
 <script lang="ts">
+  import { Check } from '@lucide/svelte';
   import type { TripRowWithItemCount, Parameter } from '$lib/client/api.js';
   import ParamChipList from './ParamChipList.svelte';
   import strings from '$lib/strings.js';
   import { formatDateRange } from '$lib/util/format-date.js';
+  import { tripDisplayName, daysBetween } from '$lib/util/trip-name.js';
 
   interface Props {
     trip: TripRowWithItemCount;
     parametersById: Map<string, Parameter>;
     maxChipsShown?: number;
+    past?: boolean;
   }
 
-  let { trip, parametersById, maxChipsShown = 3 }: Props = $props();
+  let { trip, parametersById, maxChipsShown = 3, past = false }: Props = $props();
 
   const days = $derived(daysBetween(trip.start_date, trip.end_date));
 
-  const displayName = $derived(
-    trip.name && trip.name.trim().length > 0
-      ? trip.name
-      : strings.trips_list.no_name_fallback.replace('{days}', String(days))
-  );
+  const displayName = $derived(tripDisplayName(trip, parametersById));
 
   const dateRange = $derived(formatDateRange(trip.start_date, trip.end_date));
+
+  const completed = $derived(past && trip.item_count > 0 && trip.checked_count === trip.item_count);
 
   const itemCountLabel = $derived(
     trip.item_count === 1
@@ -33,25 +34,29 @@
       .map((id) => parametersById.get(id))
       .filter((p): p is Parameter => !!p && !p.is_derived)
   );
-
-  function daysBetween(startISO: string, endISO: string): number {
-    const start = new Date(startISO + 'T00:00:00Z');
-    const end = new Date(endISO + 'T00:00:00Z');
-    const ms = end.getTime() - start.getTime();
-    return Math.max(1, Math.round(ms / 86_400_000) + 1);
-  }
 </script>
 
-<a class="card" href="/trips/{trip.id}" aria-label={displayName}>
+<a class="card" class:past href="/trips/{trip.id}" aria-label={displayName}>
   <header class="head">
     <h2 class="title">{displayName}</h2>
-    <span class="dates ltr-number">{dateRange}</span>
+    <span class="dates">
+      <span class="ltr-number">{dateRange}</span>
+      · <span class="ltr-number">{days}</span>
+      {days === 1 ? strings.common.day_one : strings.common.day_many}
+    </span>
   </header>
 
   <ParamChipList parameters={paramChips} maxShown={maxChipsShown} />
 
   <footer class="foot">
-    <span class="count">{itemCountLabel}</span>
+    {#if completed}
+      <span class="completed">
+        <Check size={14} aria-hidden="true" />
+        {strings.trips_list.completed}
+      </span>
+    {:else}
+      <span class="count">{itemCountLabel}</span>
+    {/if}
   </footer>
 </a>
 
@@ -99,5 +104,19 @@
   .count {
     font-size: var(--fs-meta);
     color: var(--color-text-muted);
+  }
+
+  .card.past {
+    opacity: 0.75;
+    background: var(--color-bg);
+  }
+
+  .completed {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--fs-meta);
+    color: var(--color-success);
+    font-weight: 600;
   }
 </style>

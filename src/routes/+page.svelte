@@ -13,6 +13,13 @@
   let { data }: Props = $props();
 
   const parametersById = $derived(new Map(data.parameters.map((p) => [p.id, p])));
+
+  const upcoming = $derived(
+    data.trips
+      .filter((t) => t.end_date >= data.todayISO)
+      .sort((a, b) => a.start_date.localeCompare(b.start_date) || a.id - b.id)
+  );
+  const past = $derived(data.trips.filter((t) => t.end_date < data.todayISO));
 </script>
 
 {#if data.trips.length === 0}
@@ -31,11 +38,30 @@
     {/snippet}
   </EmptyState>
 {:else}
-  <ul class="list">
-    {#each data.trips as trip (trip.id)}
-      <li><TripCard {trip} {parametersById} /></li>
-    {/each}
-  </ul>
+  {#if upcoming.length > 0}
+    <section class="section">
+      <h2 class="section-title">{strings.trips_list.upcoming}</h2>
+      <ul class="list">
+        {#each upcoming as trip (trip.id)}
+          <li><TripCard {trip} {parametersById} /></li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
+
+  {#if past.length > 0}
+    <section class="section">
+      {#if upcoming.length > 0}
+        <hr class="divider" />
+      {/if}
+      <h2 class="section-title">{strings.trips_list.past}</h2>
+      <ul class="list">
+        {#each past as trip (trip.id)}
+          <li><TripCard {trip} {parametersById} past /></li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
 {/if}
 
 <Fab href="/trips/new" ariaLabel={strings.a11y.create_trip}>
@@ -47,7 +73,27 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
+  }
+
+  .section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
     padding-block-start: var(--space-4);
+  }
+
+  .section-title {
+    font-size: var(--fs-meta);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+  }
+
+  .divider {
+    border: 0;
+    border-block-start: 1px solid var(--color-border);
+    margin-block-end: var(--space-2);
   }
 
   .cta {

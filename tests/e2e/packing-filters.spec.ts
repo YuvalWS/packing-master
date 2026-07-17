@@ -36,7 +36,7 @@ test('header meta shows the day count and shabbat info', async ({ page, request 
 
   const derived = derive(START, END);
   const daysSegment = `${derived.days} ${strings.common.day_many}`;
-  await expect(page.getByText(daysSegment)).toBeVisible();
+  await expect(page.getByText(daysSegment).first()).toBeVisible();
 
   expect(derived.hasShabbat).toBe(true);
   const shabbatSegment =

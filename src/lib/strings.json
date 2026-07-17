@@ -19,9 +19,13 @@
     "create_cta": "צור טיול",
     "items_count_one": "פריט אחד",
     "items_count_many": "{count} פריטים",
-    "no_name_fallback": "{days} ימים",
+    "no_name_fallback": "{days} ימים ב{accommodation}",
+    "no_name_fallback_no_accommodation": "{days} ימים",
     "and_more": "+{count}",
-    "show_less": "הצג פחות"
+    "show_less": "הצג פחות",
+    "upcoming": "קרובים",
+    "past": "עברו",
+    "completed": "הושלם"
   },
   "common": {
     "day_one": "יום",

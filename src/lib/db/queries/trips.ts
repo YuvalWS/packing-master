@@ -20,6 +20,7 @@ export interface TripRow {
 
 export interface TripRowWithItemCount extends TripRow {
   item_count: number;
+  checked_count: number;
 }
 
 export interface TripCreateInput {
@@ -73,16 +74,21 @@ const SELECT_COLS =
 export async function listAll(pool: Pool): Promise<TripRowWithItemCount[]> {
   const [rows] = await pool.query<RowDataPacket[]>(
     `SELECT ${SELECT_COLS.split(', ').map((c) => `t.${c}`).join(', ')},
-            COALESCE(c.item_count, 0) AS item_count
+            COALESCE(c.item_count, 0) AS item_count,
+            COALESCE(c.checked_count, 0) AS checked_count
      FROM trips t
      LEFT JOIN (
-       SELECT trip_id, COUNT(*) AS item_count FROM trip_items GROUP BY trip_id
+       SELECT trip_id,
+              COUNT(*) AS item_count,
+              SUM(is_checked) AS checked_count
+       FROM trip_items GROUP BY trip_id
      ) c ON c.trip_id = t.id
      ORDER BY t.start_date DESC, t.id DESC`
   );
   return rows.map((r) => ({
     ...mapRow(r),
-    item_count: Number(r.item_count)
+    item_count: Number(r.item_count),
+    checked_count: Number(r.checked_count)
   }));
 }
 

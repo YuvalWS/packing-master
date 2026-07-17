@@ -33,6 +33,7 @@ function makeTrip(overrides: Partial<TripRowWithItemCount> = {}): TripRowWithIte
     created_at: new Date(),
     updated_at: new Date(),
     item_count: 12,
+    checked_count: 0,
     ...overrides
   };
 }
@@ -54,14 +55,64 @@ describe('TripCard', () => {
     expect(screen.getByRole('heading')).toHaveTextContent('Test trip');
   });
 
-  it('falls back to a "{days} days" title when name is empty', () => {
+  it('falls back to "{days} days at {accommodation}" when name is empty', () => {
     render(TripCard, {
       props: {
         trip: makeTrip({ name: '', start_date: '2025-01-10', end_date: '2025-01-15' }),
         parametersById: paramsMap()
       }
     });
-    expect(screen.getByRole('heading')).toHaveTextContent('6');
+    const expected = strings.trips_list.no_name_fallback
+      .replace('{days}', '6')
+      .replace('{accommodation}', 'Hotel');
+    expect(screen.getByRole('heading')).toHaveTextContent(expected);
+  });
+
+  it('falls back to the plain days title when no accommodation param is set', () => {
+    render(TripCard, {
+      props: {
+        trip: makeTrip({ name: '', context: { parameters: ['env_cold'] } }),
+        parametersById: paramsMap()
+      }
+    });
+    const expected = strings.trips_list.no_name_fallback_no_accommodation.replace('{days}', '6');
+    expect(screen.getByRole('heading')).toHaveTextContent(expected);
+  });
+
+  it('shows the day count in the dates line', () => {
+    const { container } = render(TripCard, {
+      props: { trip: makeTrip(), parametersById: paramsMap() }
+    });
+    const dates = container.querySelector('.dates')?.textContent?.replace(/\s+/g, ' ');
+    expect(dates).toContain(`6 ${strings.common.day_many}`);
+  });
+
+  it('shows a completed badge for fully-checked past trips', () => {
+    render(TripCard, {
+      props: {
+        trip: makeTrip({ item_count: 5, checked_count: 5 }),
+        parametersById: paramsMap(),
+        past: true
+      }
+    });
+    expect(screen.getByText(strings.trips_list.completed)).toBeInTheDocument();
+    expect(
+      screen.queryByText(strings.trips_list.items_count_many.replace('{count}', '5'))
+    ).not.toBeInTheDocument();
+  });
+
+  it('past but incomplete trips keep the item count', () => {
+    render(TripCard, {
+      props: {
+        trip: makeTrip({ item_count: 5, checked_count: 3 }),
+        parametersById: paramsMap(),
+        past: true
+      }
+    });
+    expect(screen.queryByText(strings.trips_list.completed)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(strings.trips_list.items_count_many.replace('{count}', '5'))
+    ).toBeInTheDocument();
   });
 
   it('renders item count using the singular form when count is 1', () => {

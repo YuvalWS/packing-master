@@ -7,8 +7,11 @@ export const load: PageServerLoad = async ({ fetch }) => {
     api.listTrips(),
     api.listParameters()
   ]);
+  const now = new Date();
+  const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   return {
     trips: tripsRes.trips,
-    parameters: parametersRes.parameters
+    parameters: parametersRes.parameters,
+    todayISO
   };
 };
