@@ -7,7 +7,7 @@
     parameters: Parameter[];
     selected: string[];
     /* Ids of engine-derived parameters detected from the trip dates;
-       rendered as a read-only "אוטומטי" section, never as toggles. */
+       rendered as a read-only "automatic" section, never as toggles. */
     derivedActive?: string[];
     onChange: (next: string[]) => void;
   }

@@ -20,7 +20,7 @@ test('new trip flow: blank start, derived hints, live placeholder, submit', asyn
     page.getByRole('heading', { name: strings.new_trip.step_template_title })
   ).toBeVisible();
 
-  // Blank start lives below an "או" separator as a standalone button.
+  // Blank start lives below an "or" separator as a standalone button.
   await expect(page.getByText(strings.new_trip.or_separator, { exact: true })).toBeVisible();
   await page.getByRole('button', { name: strings.new_trip.start_blank }).click();
 
@@ -51,7 +51,7 @@ test('new trip flow: blank start, derived hints, live placeholder, submit', asyn
       : strings.new_trip.includes_shabbat_many.replace('{count}', String(derived.shabbatCount));
   await expect(page.getByText(shabbatHint)).toBeVisible();
 
-  // Detected derived params surface in the read-only אוטומטי section.
+  // Detected derived params surface in the read-only automatic section.
   await expect(
     page.getByText(strings.parameter_category.derived, { exact: true })
   ).toBeVisible();
