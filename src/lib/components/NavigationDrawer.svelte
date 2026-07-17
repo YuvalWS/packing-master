@@ -1,5 +1,6 @@
 <script lang="ts">
   import { X, Backpack, Package, LayoutTemplate } from '@lucide/svelte';
+  import { focusTrap } from '$lib/actions/focus-trap.js';
   import strings from '$lib/strings.js';
 
   interface Props {
@@ -12,6 +13,17 @@
   let { open, permanent = false, onClose, currentPath = '/' }: Props = $props();
 
   const interactable = $derived(open || permanent);
+
+  let drawerEl: HTMLElement | undefined = $state();
+
+  /* Trap focus only in overlay mode; the permanent sidebar is part of
+     the normal page tab order. */
+  $effect(() => {
+    if (open && !permanent && drawerEl) {
+      const trap = focusTrap(drawerEl);
+      return () => trap.destroy();
+    }
+  });
 
   const links = [
     { href: '/', label: strings.nav.trips, icon: Backpack },
@@ -41,6 +53,7 @@
 {/if}
 
 <aside
+  bind:this={drawerEl}
   class="drawer"
   class:open
   class:permanent

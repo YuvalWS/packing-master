@@ -100,4 +100,21 @@ test('capture all screens', async ({ page, request }) => {
     await goto(page, `/templates/${templates.templates[0]!.id}`);
     await page.screenshot({ path: `${dir}/15-template-detail.png`, fullPage: true });
   }
+
+  // 15) row-actions sheet
+  await goto(page, `/trips/${trip.id}`);
+  await page.getByRole('button', { name: strings.a11y_row.row_menu }).first().click();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${dir}/16-row-actions-sheet.png`, fullPage: true });
+  await page.keyboard.press('Escape');
+
+  // 16) error page
+  await page.goto('/trips/999999');
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: `${dir}/17-error-page.png`, fullPage: true });
+
+  // 17) desktop layout with permanent drawer
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await goto(page, `/trips/${trip.id}`);
+  await page.screenshot({ path: `${dir}/18-desktop-packing-list.png`, fullPage: true });
 });

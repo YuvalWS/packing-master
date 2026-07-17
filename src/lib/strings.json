@@ -11,7 +11,8 @@
     "open_menu": "פתח תפריט",
     "close_menu": "סגור תפריט",
     "settings": "הגדרות",
-    "create_trip": "צור טיול חדש"
+    "create_trip": "צור טיול חדש",
+    "loading": "טוען דף"
   },
   "trips_list": {
     "empty_title": "אין טיולים עדיין",

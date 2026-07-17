@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { X } from '@lucide/svelte';
+  import { focusTrap } from '$lib/actions/focus-trap.js';
   import strings from '$lib/strings.js';
 
   interface Props {
@@ -21,7 +22,7 @@
 
 {#if open}
   <div class="backdrop" onclick={onClose} role="presentation"></div>
-  <div class="sheet" role="dialog" aria-modal="true" aria-label={title}>
+  <div class="sheet" role="dialog" aria-modal="true" aria-label={title} use:focusTrap>
     <header>
       <h2>{title}</h2>
       <button type="button" class="icon-btn" aria-label={strings.a11y.close_menu} onclick={onClose}>
