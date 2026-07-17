@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/svelte';
 import ParameterSelector from '../../src/lib/components/ParameterSelector.svelte';
 import type { Parameter } from '../../src/lib/client/api.js';
+import strings from '../../src/lib/strings.js';
 
 afterEach(cleanup);
 
@@ -71,5 +72,28 @@ describe('ParameterSelector', () => {
     expect(swim).toHaveAttribute('aria-pressed', 'true');
     const hike = screen.getByRole('button', { name: 'Hike' });
     expect(hike).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('renders active derived params as a read-only section', () => {
+    render(ParameterSelector, {
+      props: {
+        parameters: fixture,
+        selected: [],
+        derivedActive: ['derived_x'],
+        onChange: vi.fn()
+      }
+    });
+    expect(screen.getByText(strings.parameter_category.derived)).toBeInTheDocument();
+    expect(screen.getByText('D')).toBeInTheDocument();
+    expect(screen.getByText(strings.new_trip.derived_hint)).toBeInTheDocument();
+    // Not a toggle: no button/checkbox role for the derived chip.
+    expect(screen.queryByRole('button', { name: 'D' })).not.toBeInTheDocument();
+  });
+
+  it('hides the derived section when nothing is detected', () => {
+    render(ParameterSelector, {
+      props: { parameters: fixture, selected: [], derivedActive: [], onChange: vi.fn() }
+    });
+    expect(screen.queryByText(strings.parameter_category.derived)).not.toBeInTheDocument();
   });
 });

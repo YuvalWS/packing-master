@@ -1,14 +1,22 @@
 <script lang="ts">
+  import { Check } from '@lucide/svelte';
   import type { Parameter } from '$lib/client/api.js';
   import strings from '$lib/strings.js';
 
   interface Props {
     parameters: Parameter[];
     selected: string[];
+    /* Ids of engine-derived parameters detected from the trip dates;
+       rendered as a read-only "אוטומטי" section, never as toggles. */
+    derivedActive?: string[];
     onChange: (next: string[]) => void;
   }
 
-  let { parameters, selected, onChange }: Props = $props();
+  let { parameters, selected, derivedActive = [], onChange }: Props = $props();
+
+  const activeDerivedParams = $derived(
+    parameters.filter((p) => p.is_derived && derivedActive.includes(p.id))
+  );
 
   const byCategory = $derived.by(() => {
     const accommodation: Parameter[] = [];
@@ -101,6 +109,21 @@
       </div>
     </fieldset>
   {/if}
+
+  {#if activeDerivedParams.length > 0}
+    <div class="group derived-group">
+      <p class="derived-legend">{strings.parameter_category.derived}</p>
+      <div class="options chips">
+        {#each activeDerivedParams as p (p.id)}
+          <span class="derived-chip">
+            <Check size={14} aria-hidden="true" />
+            {p.display_name}
+          </span>
+        {/each}
+      </div>
+      <p class="derived-hint">{strings.new_trip.derived_hint}</p>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -176,5 +199,32 @@
     background: var(--color-primary-soft);
     border-color: var(--color-primary);
     color: var(--color-primary);
+  }
+
+  .derived-legend {
+    font-size: var(--fs-meta);
+    font-weight: 700;
+    color: var(--color-text-muted);
+    margin-block-end: var(--space-2);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .derived-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-pill);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-size: var(--fs-meta);
+  }
+
+  .derived-hint {
+    margin-block-start: var(--space-2);
+    font-size: var(--fs-meta);
+    color: var(--color-text-muted);
   }
 </style>

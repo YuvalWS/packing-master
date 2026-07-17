@@ -39,7 +39,7 @@ test('narrowing parameters surfaces the regen diff modal; confirming drops rows'
   // de-select the day-plan chips to narrow.
   await page.getByRole('button', { name: plans[0]!.display_name, pressed: true }).click();
   await page.getByRole('button', { name: plans[1]!.display_name, pressed: true }).click();
-  await page.getByRole('button', { name: strings.common.save }).click();
+  await page.getByRole('button', { name: strings.settings.submit }).click();
 
   const modal = page.getByRole('dialog', { name: strings.regen.title });
   await expect(modal).toBeVisible();
@@ -86,7 +86,7 @@ test('checked items slated for removal are flagged in the modal', async ({ page,
   await goto(page, `/trips/${trip.id}/settings`);
   await page.getByRole('button', { name: plans[0]!.display_name, pressed: true }).click();
   await page.getByRole('button', { name: plans[1]!.display_name, pressed: true }).click();
-  await page.getByRole('button', { name: strings.common.save }).click();
+  await page.getByRole('button', { name: strings.settings.submit }).click();
 
   const modal = page.getByRole('dialog', { name: strings.regen.title });
   await expect(modal).toBeVisible();

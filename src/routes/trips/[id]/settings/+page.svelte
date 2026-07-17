@@ -7,6 +7,8 @@
   import Toast from '$lib/components/Toast.svelte';
   import type { PatchTripResponse, PatchTripDiffRemoved } from '$lib/client/api.js';
   import { makeApi } from '$lib/client/api.js';
+  import { derive, type DerivedTrip } from '$lib/rules/derived.js';
+  import { formatDateRange } from '$lib/util/format-date.js';
   import strings from '$lib/strings.js';
 
   interface Props {
@@ -30,6 +32,15 @@
   let toastMsg = $state<string | null>(null);
   let toastTone = $state<'info' | 'success' | 'danger'>('info');
   let pendingDiff = $state<PatchTripResponse['diff'] | null>(null);
+
+  const derivedTrip = $derived.by<DerivedTrip | null>(() => {
+    if (!startDate || !endDate || startDate > endDate) return null;
+    try {
+      return derive(startDate, endDate);
+    } catch {
+      return null;
+    }
+  });
 
   async function save() {
     submitting = true;
@@ -140,6 +151,22 @@
       </label>
     </div>
 
+    {#if derivedTrip !== null}
+      <p class="days-hint">
+        <span class="ltr-number">{formatDateRange(startDate, endDate)}</span>
+        · <span class="ltr-number">{derivedTrip.days}</span>
+        {derivedTrip.days === 1 ? strings.common.day_one : strings.common.day_many}
+        {#if derivedTrip.hasShabbat}
+          · {derivedTrip.shabbatCount === 1
+            ? strings.new_trip.includes_shabbat_one
+            : strings.new_trip.includes_shabbat_many.replace(
+                '{count}',
+                String(derivedTrip.shabbatCount)
+              )}
+        {/if}
+      </p>
+    {/if}
+
     <label class="field">
       <span>{strings.new_trip.label_destination}</span>
       <input
@@ -152,12 +179,13 @@
     <ParameterSelector
       parameters={data.parameters}
       selected={parameters}
+      derivedActive={derivedTrip?.derivedParamIds ?? []}
       onChange={(next) => (parameters = next)}
     />
 
     <div class="actions">
       <button type="submit" class="submit" disabled={submitting}>
-        {submitting ? strings.common.loading : strings.common.save}
+        {submitting ? strings.common.loading : strings.settings.submit}
       </button>
       <button type="button" class="danger" onclick={destroy} disabled={submitting}>
         <Trash2 size={16} />
@@ -219,6 +247,12 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--space-3);
+  }
+
+  .days-hint {
+    margin-block-start: calc(-1 * var(--space-2));
+    color: var(--color-text-muted);
+    font-size: var(--fs-meta);
   }
 
   .actions {

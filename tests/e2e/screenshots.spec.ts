@@ -24,7 +24,7 @@ test('capture all screens', async ({ page, request }) => {
   await page.screenshot({ path: `${dir}/03-new-trip-templates.png`, fullPage: true });
 
   // 4) new-trip step 2
-  await page.getByRole('button', { name: strings.new_trip.no_template }).click();
+  await page.getByRole('button', { name: strings.new_trip.start_blank }).click();
   await page.waitForTimeout(200);
   await page.screenshot({ path: `${dir}/04-new-trip-details.png`, fullPage: true });
 

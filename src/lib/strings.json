@@ -35,7 +35,14 @@
   "new_trip": {
     "step_template_title": "בחר תבנית",
     "step_details_title": "פרטי הטיול",
-    "no_template": "ללא תבנית",
+    "step_indicator": "שלב {n} מתוך 2",
+    "or_separator": "או",
+    "start_blank": "התחל מטיול ריק",
+    "derived_hint": "זוהה מתאריכי הטיול",
+    "includes_shabbat_one": "כולל שבת",
+    "includes_shabbat_many": "כולל {count} שבתות",
+    "name_auto_placeholder": "{days} ימים ב{accommodation}",
+    "name_fallback_placeholder": "טיול",
     "label_name": "שם הטיול",
     "label_name_placeholder": "אופציונלי",
     "label_start": "תאריך התחלה",
@@ -115,6 +122,7 @@
   },
   "settings": {
     "title": "הגדרות טיול",
+    "submit": "עדכן ובדוק שינויים",
     "saved_toast": "הרשימה עודכנה",
     "saved_with_changes": "הרשימה עודכנה · נוספו {added} · שונו {updated}",
     "save_failed": "שמירה נכשלה. נסה שוב.",

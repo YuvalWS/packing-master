@@ -4,6 +4,8 @@
   import { ChevronLeft } from '@lucide/svelte';
   import ParameterSelector from '$lib/components/ParameterSelector.svelte';
   import { makeApi } from '$lib/client/api.js';
+  import { derive, type DerivedTrip } from '$lib/rules/derived.js';
+  import { formatDateRange } from '$lib/util/format-date.js';
   import strings from '$lib/strings.js';
 
   interface Props {
@@ -26,12 +28,25 @@
     data.parameters.filter((p) => p.category === 'accommodation' && !p.is_derived)
   );
 
-  const days = $derived.by(() => {
-    if (!startDate || !endDate) return null;
-    if (startDate > endDate) return null;
-    const start = new Date(startDate + 'T00:00:00Z');
-    const end = new Date(endDate + 'T00:00:00Z');
-    return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  const derivedTrip = $derived.by<DerivedTrip | null>(() => {
+    if (!startDate || !endDate || startDate > endDate) return null;
+    try {
+      return derive(startDate, endDate);
+    } catch {
+      return null;
+    }
+  });
+
+  const days = $derived(derivedTrip?.days ?? null);
+
+  const namePlaceholder = $derived.by(() => {
+    const accommodation = parameters
+      .map((id) => accommodationParams.find((p) => p.id === id))
+      .find((p) => p !== undefined);
+    if (days === null || !accommodation) return strings.new_trip.name_fallback_placeholder;
+    return strings.new_trip.name_auto_placeholder
+      .replace('{days}', String(days))
+      .replace('{accommodation}', accommodation.display_name);
   });
 
   function chooseTemplate(templateId: string | null) {
@@ -75,13 +90,11 @@
 
 {#if step === 'template'}
   <section class="step">
+    <p class="step-indicator">
+      {strings.new_trip.step_indicator.replace('{n}', '1')} · {strings.new_trip.step_template_title}
+    </p>
     <h2>{strings.new_trip.step_template_title}</h2>
     <ul class="template-list">
-      <li>
-        <button type="button" class="template-card" onclick={() => chooseTemplate(null)}>
-          <strong>{strings.new_trip.no_template}</strong>
-        </button>
-      </li>
       {#each data.templates as t (t.id)}
         <li>
           <button type="button" class="template-card" onclick={() => chooseTemplate(t.id)}>
@@ -93,6 +106,12 @@
         </li>
       {/each}
     </ul>
+    <div class="or-sep" role="presentation">
+      <span>{strings.new_trip.or_separator}</span>
+    </div>
+    <button type="button" class="blank-btn" onclick={() => chooseTemplate(null)}>
+      {strings.new_trip.start_blank}
+    </button>
   </section>
 {:else}
   <section class="step">
@@ -100,6 +119,9 @@
       <ChevronLeft size={18} />
       <span>{strings.common.back}</span>
     </button>
+    <p class="step-indicator">
+      {strings.new_trip.step_indicator.replace('{n}', '2')} · {strings.new_trip.step_details_title}
+    </p>
     <h2>{strings.new_trip.step_details_title}</h2>
 
     <form
@@ -110,11 +132,7 @@
     >
       <label class="field">
         <span>{strings.new_trip.label_name}</span>
-        <input
-          type="text"
-          bind:value={name}
-          placeholder={strings.new_trip.label_name_placeholder}
-        />
+        <input type="text" bind:value={name} placeholder={namePlaceholder} />
       </label>
 
       <div class="row">
@@ -128,11 +146,19 @@
         </label>
       </div>
 
-      {#if days !== null}
+      {#if derivedTrip !== null}
         <p class="days-hint">
-          <span class="ltr-number">{days}</span>
-          {' '}
-          {days === 1 ? strings.common.day_one : strings.common.day_many}
+          <span class="ltr-number">{formatDateRange(startDate, endDate)}</span>
+          · <span class="ltr-number">{derivedTrip.days}</span>
+          {derivedTrip.days === 1 ? strings.common.day_one : strings.common.day_many}
+          {#if derivedTrip.hasShabbat}
+            · {derivedTrip.shabbatCount === 1
+              ? strings.new_trip.includes_shabbat_one
+              : strings.new_trip.includes_shabbat_many.replace(
+                  '{count}',
+                  String(derivedTrip.shabbatCount)
+                )}
+          {/if}
         </p>
       {/if}
 
@@ -148,6 +174,7 @@
       <ParameterSelector
         parameters={data.parameters}
         selected={parameters}
+        derivedActive={derivedTrip?.derivedParamIds ?? []}
         onChange={(next) => (parameters = next)}
       />
 
@@ -173,6 +200,43 @@
   .step h2 {
     font-size: var(--fs-title);
     font-weight: 700;
+  }
+
+  .step-indicator {
+    font-size: var(--fs-meta);
+    color: var(--color-text-muted);
+    margin-block-end: calc(-1 * var(--space-3));
+  }
+
+  .or-sep {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--color-text-muted);
+    font-size: var(--fs-meta);
+  }
+
+  .or-sep::before,
+  .or-sep::after {
+    content: '';
+    flex: 1;
+    border-block-start: 1px solid var(--color-border);
+  }
+
+  .blank-btn {
+    width: 100%;
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .blank-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
   }
 
   .template-list {
