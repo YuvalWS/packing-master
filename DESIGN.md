@@ -532,7 +532,7 @@ These screens will exist later. Don't design them now, but reserve nav slots:
 - Shopping list (post-v1)
 - Bag-weight tracking (post-v1)
 - Trip export to plain text / share (post-v1)
-- Per-traveler split when "joint list" launches (post-v1)
+- ~~Per-traveler split when "joint list" launches~~ — built as multi-person trips, §13
 
 ---
 
@@ -666,7 +666,7 @@ Approved by the user 2026-11-19 so an AI agent can manage items, rules, template
 - Shopping list
 - Bag-weight tracking
 - Trip export to plain text
-- Joint-list UI (the `is_shared` flag already exists)
+- ~~Joint-list UI~~ — superseded by multi-person trips, §13 (`is_shared` retired)
 - Mutually-exclusive item groups
 - Holiday detection beyond Shabbat
 - Hebrew/Gregorian date toggle on date pickers
@@ -782,3 +782,51 @@ Where the implementation deliberately departs from §§4–7, and why. Anything 
 | 9 | — | `derive()` (with @hebcal/core) runs client-side in new-trip/settings for live date hints | ~100KB gz added to the bundle; accepted for a personal app. Alternative if it ever matters: a tiny `GET /api/derived?start&end` endpoint |
 | 10 | §3 navigation: trips, items, templates | A fourth drawer entry, **System settings** (`/system`): version + Update button + update log, backups, links to the agent API docs | Added with the Proxmox deploy (Nov 2026); updates and backups need a home in the UI. Its controls follow the trip-menu patterns (inline confirm, toasts) |
 | 11 | §11 Phase 4: Hostinger | Proxmox LXC on the LAN, Node + MariaDB natively, update button with rollback; Cloudflare Tunnel + Access later | User's own infrastructure; a small native LXC keeps the footprint low. MariaDB is kept compatible alongside MySQL 8 (tests run on both) |
+
+## 13. Multi-person trips (approved November 2026)
+
+The family is a group of **people**; each trip toggles who is coming. Item quantities can be per family, per person, per adult / kid / baby, or tied to one specific person (the baby's things). Replaces the "joint list" and "per-traveler split" parking-lot entries (§8, §10.3) and the unused `is_shared` flag.
+
+### 13.1 Data model
+
+- **`people`** table: `id` (snake_case), `display_name` (Hebrew, in the DB only, never in the repo), `kind` = `adult` | `kid` | `baby`, `sort_order`, `archived_at`. Kind is set by hand (update it when the baby becomes a kid); no birth dates.
+- **Trip travelers:** the existing `trips.travelers` JSON column (always NULL so far) becomes an array of person ids. New trips store who is coming explicitly, every active person by default.
+- **Item scope** — three item fields:
+  - `per` = `family` | `person` | `adult` | `kid` | `baby`: who the formula's count is for. `family` is once per trip; the others repeat it for every traveler of that kind (`person` = every traveler).
+  - `split` (default true): for a non-family scope, **one row per traveler** ("4 socks" for each of us, packed separately). `split: false` sums into **one shared row** (food: 2 per person per day → one row of 12 for three people).
+  - `person_id`: the item is for that one person only — included if they are coming, one row labelled with their name, count × 1.
+  - No matching traveler → the item is left out.
+- **`trip_items.person_id`** (`''` for shared / family rows) joins the unique key `(trip_id, item_id, person_id)`, so the same catalog item can have one row per person. Kit components get the same column.
+
+### 13.2 Rules language additions
+
+- Conditions: `{"person": "<id>"}` (that person is coming), `{"kind": "baby"}` (at least one traveler of that kind). Usable inside `and` / `or` / `not` like any other condition.
+- Quantities are unchanged; `per` / `split` / `person_id` decide how many rows and for whom. `GET /llms.txt` documents both, with examples.
+
+### 13.3 Screens
+
+- **Family** (new drawer entry, `/people`): list of people with kind; add, rename, change kind, remove (archived if a trip used them).
+- **New trip / trip settings:** a "Who's coming" chip row above the parameters, every active person on by default. Changing it is a settings change, so it goes through the existing regen diff (nothing is removed without confirmation).
+- **Packing list:** a per-person row shows the person's name next to the item name; shared rows look as today. Bag split stays as it is.
+- **Items catalog:** the rule summary shows the scope ("per baby", "for <name>").
+
+### 13.4 Migration of the existing catalog (decided 2026-11-19)
+
+The 208 items marked personal (`is_shared = false`) were written for the owner alone. They become **tied to the owner** until the second adult starts using the app; the owner (or the agent) then un-ties them in bulk, which turns them into per-person rows.
+
+Migration `0004` (a **breaking change** under workflow rule 9):
+
+1. Creates `people`; if any item is personal, adds one adult with id `owner` (display name `owner`, renamed in the Family page — the repo holds no names).
+2. Adds `items.per`, `items.split`, `items.person_id`; personal items → `per = person`, `person_id = owner`; shared items → `per = family`. Drops `is_shared`.
+3. Adds `person_id` to `trip_items` and `trip_kit_components`; rows of owner-tied items get `owner`.
+4. Old trips get `travelers = ["owner"]`, so their lists and counts do not change.
+
+The backup restore gets the same transformation as an upgrader, so a backup taken before `0004` still restores.
+
+### 13.5 API
+
+`GET/POST /api/people`, `GET/PATCH/DELETE /api/people/:id`; `travelers: string[]` on trip create / patch / preview; `per`, `split`, `person_id` on items; `person_id` and `person_name` on trip rows. A trip row is addressed by `row_id`, or by `item_id` when that item has a single row on the trip (409 `ambiguous_item_key` otherwise). All in the API registry, so `/api`, `/api/openapi.json` and `/llms.txt` pick them up.
+
+### 13.6 Tests
+
+Unit: scopes, split, person-tied items, the two new condition operators, merge keyed by item + person. Integration: people CRUD, travelers through generate / patch / reapply, the `0004` migration on a pre-change database, and restoring a pre-change backup (rule 9) — on MySQL and MariaDB. Component + e2e: "Who's coming" and the person label on rows.

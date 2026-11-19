@@ -130,6 +130,12 @@ Run via `docker compose run --rm app npm test` (see README for the full suite ta
 6. **Two users max.** Don't add user-scoping, RBAC, sharding, caching layers, queues, or other infra for scale. Pick the boring path.
 7. **No auth in the app.** LAN-only for now; remote access will go through Cloudflare Access (service tokens for agents). Don't write login screens, sessions, or a users table for v1.
 8. **Privacy guards before every commit** — see README § "Privacy / personal data". No personal identifying data and no Hebrew (outside the strings file) in the committed tree.
+9. **Breaking data changes: backup → fix the data → restore.** The app is in production (LXC 102), so prefer additive migrations; a change that cannot keep existing data valid as-is (a dropped or renamed column, a changed JSON shape, a changed meaning) is a breaking change and must be rare. When one is unavoidable:
+   1. Take a backup first (`POST /api/backups`, System settings, or rely on the automatic pre-update backup — but check it exists).
+   2. Fix the data in the same change: the migration converts the rows in SQL (MySQL 8 *and* MariaDB), **and** `src/lib/server/backup.ts` gets an upgrader so backups taken before the change still restore (the restore path must never reject an older backup).
+   3. Test the round trip: restore a pre-change backup into the new schema in an integration test.
+   4. After deploying, verify the live data; if it is wrong, restore the pre-update backup and fix forward.
+   Call out a breaking change in the commit message and the PR/hand-off summary.
 
 ## File map (current)
 
@@ -215,6 +221,7 @@ Run via `docker compose run --rm app npm test` (see README for the full suite ta
 - [x] **Phase 2** — API surface
 - [x] **Phase 3** — UI screens (incl. a UI/UX gap-closure pass vs. DESIGN.md §4–§7 — July 2026; deliberate divergences listed in DESIGN.md §12)
 - [x] **Phase 4** — deploy to a Proxmox LXC (Nov 2026): helper script, native installer, update button with rollback, backups, agent API docs. Remote access via Cloudflare Tunnel + Access is still to do.
+- [x] **Multi-person trips** (DESIGN.md §13, November 2026) — people, travelers per trip, per-family / per-person / per-kind / person-tied items, one row per person. Migration 0004 was a breaking change (rule 9).
 - [x] **Catalog write API** (DESIGN.md §10.0) — items/templates/parameters CRUD, rule preview, reapply-to-trip, export; archived items.
 - [ ] **Phase 5+** — items editor UI (easy mode → advanced block builder) on top of that API, tasks list, shopping list
 
@@ -222,7 +229,7 @@ See [DESIGN.md §11 — Implementation order & testing plan](DESIGN.md) for the 
 
 ## Don'ts
 
-- Don't add tasks list, shopping list, optional/priority levels, joint-list UI, weight tracking, offline support, holiday detection beyond Shabbat, multi-language, or trip sharing. All deferred to post-v1. See `context.md` § "Out of scope for v1".
+- Don't add tasks list, shopping list, optional/priority levels, weight tracking, offline support, holiday detection beyond Shabbat, multi-language, or trip sharing. All deferred to post-v1. See `context.md` § "Out of scope for v1".
 - Don't introduce React, Tailwind plugins, or other heavy frontend deps before checking with the user. Default to SvelteKit's built-ins.
 - Don't write a custom auth layer. Access control belongs to Cloudflare Access (later) / the LAN (now).
 - Don't commit Excel files, MySQL dumps, `.env` files, or anything from `seed/local/`.
