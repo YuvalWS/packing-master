@@ -120,11 +120,14 @@ EOF
 msg "Building $(git -C "$APP_DIR" log -1 --format='%h %cs %s') (a minute or two)"
 systemctl stop packing-master 2>/dev/null || true
 BUILD_LOG=$DATA_DIR/build.log
+# An old build must never mask a failed one. The steps are chained with && because
+# `set -e` does not apply inside a subshell whose status `if` tests.
+rm -rf "$APP_DIR/build"
 if ! (
-  cd "$APP_DIR"
-  npm ci --no-audit --no-fund --loglevel=error
-  npm run build
-  npm prune --omit=dev --no-audit --no-fund --loglevel=error
+  cd "$APP_DIR" &&
+  npm ci --no-audit --no-fund --loglevel=error &&
+  npm run build &&
+  npm prune --omit=dev --no-audit --no-fund --loglevel=error &&
   npm cache clean --force --loglevel=error
 ) >"$BUILD_LOG" 2>&1; then
   tail -40 "$BUILD_LOG" >&2
