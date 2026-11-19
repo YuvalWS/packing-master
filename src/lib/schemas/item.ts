@@ -17,7 +17,7 @@ export const KitComponentSchema = z
   .strict();
 export type KitComponent = z.infer<typeof KitComponentSchema>;
 
-export const ItemSchema = z
+export const ItemObject = z
   .object({
     id: IdSchema,
     display_name: z.string().min(1).max(255),
@@ -31,8 +31,9 @@ export const ItemSchema = z
     quantity: QuantitySchema,
     notes: z.string().optional()
   })
-  .strict()
-  .superRefine((item, ctx) => {
+  .strict();
+
+export const ItemSchema = ItemObject.superRefine((item, ctx) => {
     if (item.is_kit && (!item.kit_contents || item.kit_contents.length === 0)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

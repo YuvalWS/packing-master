@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS items (
   include_when  JSON         NOT NULL,
   quantity      JSON         NOT NULL,
   notes         TEXT         NULL,
+  archived_at   TIMESTAMP    NULL DEFAULT NULL,
   created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_items_category (category)
