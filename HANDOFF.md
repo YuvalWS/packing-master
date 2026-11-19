@@ -1,6 +1,6 @@
 # HANDOFF — state of the project and what's next
 
-_Last updated: 2026-08-31, after the personal-catalog import pass._
+_Last updated: 2026-11-19, after the Proxmox LXC deploy pass (backups, update button, agent API)._
 
 ## Where things stand
 
@@ -18,8 +18,8 @@ Test surface (all green as of the last commit):
 
 | Suite | Command | Count |
 |---|---|---|
-| Unit | `docker compose run --rm app npm test` | 191 |
-| Integration (db_test) | `docker compose run --rm app npm run test:integration` | 60 |
+| Unit | `docker compose run --rm app npm test` | 195 |
+| Integration (db_test) | `docker compose run --rm app npm run test:integration` | 66 (also green on MariaDB 11.8) |
 | Component (jsdom) | `docker compose run --rm app npm run test:component` | 76 |
 | E2E (Playwright in Docker) | `docker compose run --rm e2e` | 29 |
 | Types/lint | `docker compose run --rm app npm run check` | 0 errors |
@@ -46,23 +46,32 @@ way to eyeball a regression.
 
 ## What's next, in order
 
-### 1. Phase 4 — Hostinger deploy (DESIGN.md §11, the next milestone)
+### 1. Phase 4 — deploy (done for the LAN; target changed from Hostinger to a Proxmox LXC)
 
-Nothing here has been started beyond stubs. Steps:
+Done in November 2026 (see README § "Deploy: Proxmox LXC"):
 
-1. **Verify the production Docker build.** `Dockerfile` has `build` and `runtime`
-   stages explicitly marked `stub for phase 4`. `@sveltejs/adapter-node` is already a
-   dependency but `svelte.config.js` must be checked/switched to it. Gate:
-   `docker compose build app --target runtime` succeeds and `node build` serves the app
-   against a MySQL instance.
-2. **Document Hostinger config in README**: entry point (`build/index.js`), required
-   env vars (see `.env.example` / `src/lib/db/pool.ts` for the names), port binding.
-3. **Data upload**: dump `db_dev` to a gitignored `.sql` (the `*.sql.gz`/`*.dump`
-   patterns are already ignored) and import into Hostinger MySQL manually.
-4. **Smoke-test the live site** (create trip → check items → edit settings with a
-   removal → confirm the diff modal).
+- `proxmox/packing-master.sh` creates a small Debian LXC; `proxmox/install.sh` installs
+  Node.js 22 + MariaDB natively under systemd (no Docker), builds, and installs `update`,
+  the update/check path units and a daily backup timer. Private repo → per-container
+  read-only GitHub deploy key.
+- MariaDB compatibility: JSON columns are parsed by name in the pool's `typeCast`
+  (`src/lib/db/json-columns.ts`). Run the integration suite against MariaDB with a
+  `mariadb:11.8` container as `DB_TEST_HOST` before changing SQL.
+- Backups (`/api/backups`, System settings page): gzipped JSON snapshots, restore in one
+  transaction with an automatic pre-restore backup. `npm run backup:dev` carries the dev
+  catalog to a fresh install.
+- Update button: the app only writes request files into `CONTROL_DIR`; root-side systemd
+  units do the work (same pattern as the sound-detector project).
+- Agent API: `/llms.txt`, `/api`, `/api/openapi.json` from `src/lib/api/catalog.ts`.
 
-Auth stays at the hosting layer — do not build login (CLAUDE.md § "Don'ts").
+Open items:
+
+- `CLAUDE.md` and `DESIGN.md` §11 still say Hostinger — update them once the user acks.
+- Remote access later: Cloudflare Tunnel + Cloudflare Access (service tokens for agents).
+  `PROTOCOL_HEADER=x-forwarded-proto` is already set; there are no form actions, so
+  SvelteKit's origin check does not need `ORIGIN`.
+- `deploy/compose.yml` (Docker + MySQL 8) is an alternative for any Docker host; the LXC
+  does not use it.
 
 ### 2. Review the generated personal catalog
 

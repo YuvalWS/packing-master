@@ -6,7 +6,7 @@ A parameter-driven Hebrew/RTL packing-list generator. The catalog holds items wi
 
 - SvelteKit 2 + TypeScript (strict, `noUncheckedIndexedAccess`)
 - Svelte 5 (runes)
-- MySQL 8 via `mysql2/promise`
+- MySQL 8 via `mysql2/promise` (production on the LXC uses MariaDB; both are tested)
 - Migrations: `umzug`
 - Validation: `zod`
 - Hebrew calendar: `@hebcal/core`
@@ -66,7 +66,59 @@ The e2e suite drives every key flow (empty list, new-trip, packing-check, kit ex
 | `docker compose run --rm app npm run seed:sample`      | Load generic sample catalog into dev DB       |
 | `docker compose run --rm app npm run seed:local`       | Load local personal catalog into dev DB       |
 | `docker compose run --rm app npm run extract:excel`    | Convert source spreadsheet → YAML in `seed/local/` |
+| `docker compose run --rm app npm run backup:dev`       | Back up the dev DB to `.data/backups/` (upload it to a deploy to restore) |
 | `docker compose down -v`                               | Tear down and wipe dev DB volume              |
+
+## Deploy: Proxmox LXC (LAN)
+
+A small unprivileged Debian LXC: Node.js 22 and MariaDB run natively under systemd, no
+Docker (about 150 MB RAM idle, ~1.5 GB disk). LAN only, no login; for access from outside,
+put a Cloudflare Tunnel with Cloudflare Access in front later.
+
+1. Copy the helper to the Proxmox host and run it as root (the repository is private, so
+   it is copied rather than curled):
+
+   ```powershell
+   scp proxmox/packing-master.sh root@<proxmox-host>:/root/
+   ```
+
+   then, on the Proxmox shell: `bash /root/packing-master.sh`. It asks for the GitHub
+   repository (`owner/name`), creates the container (defaults: 2 cores, 1 GB RAM + 1 GB swap,
+   4 GB disk, DHCP), generates a read-only deploy key inside it and waits while you add the
+   key at `https://github.com/<owner>/<name>/settings/keys/new`. Then it installs and
+   prints the URL.
+2. Bring the catalog over: `docker compose run --rm app npm run backup:dev`, then in the
+   deployed app open **System settings → Backups → upload**, pick the file from
+   `.data/backups/`, and **Restore** it.
+
+On the container (`pct enter <ctid>`):
+
+| Command | Purpose |
+|---|---|
+| `update` | Back up, pull the latest commit, rebuild, restart; rolls back if the new version is unhealthy |
+| `journalctl -u packing-master -f` | App logs |
+| `systemctl status packing-master mariadb` | Service state |
+| `/etc/packing-master/env` | Settings (port, DB password, paths) |
+| `/var/lib/packing-master/backups/` | Backups (daily at 03:30, before each update and restore) |
+
+The **Update** button in System settings does the same as `update`: the app writes a
+request file to `/var/lib/packing-master/control/`, and a systemd path unit runs the update
+as root and writes `update.log`, which the page shows.
+
+The Docker route also works on any host: `deploy/compose.yml` runs the production image
+with MySQL 8 (`docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build`).
+
+## API for programs and AI agents
+
+The UI's JSON API is the integration surface; nothing is UI-only.
+
+- `GET /llms.txt` — guide for agents: concepts, common tasks, safety rules.
+- `GET /api` — endpoint index with JSON schemas and examples.
+- `GET /api/openapi.json` — OpenAPI 3.1, for tool-calling clients.
+
+All three are rendered from `src/lib/api/catalog.ts`; a unit test fails if a route under
+`src/routes/api/` is missing from it. Behind Cloudflare Access, give an agent a service
+token and have it send `CF-Access-Client-Id` / `CF-Access-Client-Secret`.
 
 ## Data layout
 
