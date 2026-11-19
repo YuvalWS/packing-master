@@ -117,8 +117,8 @@ The UI's JSON API is the integration surface; nothing is UI-only.
 - `GET /api` — endpoint index with JSON schemas and examples.
 - `GET /api/openapi.json` — OpenAPI 3.1, for tool-calling clients.
 
-Agents can manage trips and the catalog itself: items with their rules and quantities,
-templates and parameters (`POST/PATCH/DELETE /api/items|templates|parameters`), dry-run a
+Agents can manage trips, the family (`/api/people`) and the catalog itself: items with
+their rules, quantities and who they are for, templates and parameters (`POST/PATCH/DELETE /api/items|templates|parameters`), dry-run a
 rule with `POST /api/catalog/preview`, and push catalog changes into an existing trip with
 `POST /api/trips/{id}/reapply`. `/llms.txt` documents the rules language.
 

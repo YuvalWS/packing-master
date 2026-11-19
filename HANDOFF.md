@@ -108,6 +108,18 @@ The live DB is now the catalog's source of truth; an AI agent edits it over the 
 archived (`items.archived_at`, migration 0003) instead of deleted. The editor UI below
 should be a client of these endpoints, not a new write path.
 
+### 2c. Multi-person trips (done November 2026, DESIGN.md §13)
+
+People (`/people`, `/api/people`), "Who's coming" on new trip / settings, items scoped
+`per` family / person / adult / kid / baby with `split` (row per person vs one summed
+row) or tied to one `person_id`. Trip rows carry `person_id`; address them by `row_id`.
+Migration 0004 retired `items.is_shared`: personal items were tied to an `owner`
+person (rename it in the Family page) and old trips got `travelers = ["owner"]`;
+`backup.ts` upgrades pre-0004 backups the same way. When the second adult starts
+using the app, un-tie personal items (`PATCH /api/items/{id}` with `person_id: null`)
+so they become per-person rows. `seed/local/*.yaml` still has the old `is_shared`
+shape: refresh it with `npm run catalog:pull -- <url>` rather than `seed:local`.
+
 ### 3. Phase 5 — items editor, easy mode (DESIGN.md §10.1)
 
 The read-only catalog is done; the editor is the next feature phase. Easy mode is a
