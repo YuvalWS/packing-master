@@ -3,11 +3,10 @@ import { ok, parseBody, parseIntId } from '$lib/api/json.js';
 import { ApiError, throwSvelteError } from '$lib/api/errors.js';
 import * as tripsQ from '$lib/db/queries/trips.js';
 import * as itemsQ from '$lib/db/queries/items.js';
-import * as parametersQ from '$lib/db/queries/parameters.js';
 import * as tripItemsQ from '$lib/db/queries/trip-items.js';
 import * as kitQ from '$lib/db/queries/trip-kit-components.js';
-import { generate } from '$lib/rules/generate.js';
-import { mergeIntoTrip, type TripItemRow } from '$lib/rules/merge.js';
+import { withDomainErrors } from '$lib/api/domain-errors.js';
+import { applyRules } from '$lib/server/trip-rules.js';
 import { TripPatchRequest } from '$lib/schemas/api/trip.js';
 
 interface EnrichedItem {
@@ -67,97 +66,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 export const PATCH: RequestHandler = async ({ locals, params, request }) => {
   const tripId = parseIntId(params.id);
   const body = await parseBody(request, TripPatchRequest);
-
-  const existing = await tripsQ.getById(locals.pool, tripId);
-  if (!existing) throwSvelteError(new ApiError(404, 'trip_not_found'));
-
-  const nextParameters = body.parameters ?? existing.context.parameters;
-  const nextExtras =
-    body.extras !== undefined ? body.extras : existing.context.extras;
-  const nextStart = body.start_date ?? existing.start_date;
-  const nextEnd = body.end_date ?? existing.end_date;
-
-  const [items, parameters, existingItems] = await Promise.all([
-    itemsQ.listAll(locals.pool),
-    parametersQ.listAll(locals.pool),
-    tripItemsQ.listByTrip(locals.pool, tripId)
-  ]);
-
-  let generated;
-  try {
-    generated = generate({
-      items,
-      parameters,
-      userParams: nextParameters,
-      startISO: nextStart,
-      endISO: nextEnd,
-      extraContext: nextExtras
-    });
-  } catch (err) {
-    throwSvelteError(
-      new ApiError(400, 'generate_failed', err instanceof Error ? err.message : String(err))
-    );
-  }
-
-  const mergeInput: TripItemRow[] = existingItems
-    .filter((r) => r.item_id !== null)
-    .map((r) => ({
-      itemId: r.item_id as string,
-      count: r.count,
-      isManual: r.is_manual,
-      countWasEdited: r.count_was_edited,
-      ruleSnapshot: r.rule_snapshot ?? undefined
-    }));
-
-  const diff = mergeIntoTrip(mergeInput, generated.items);
-
-  await tripsQ.updateSettings(locals.pool, tripId, {
-    name: body.name,
-    template_id: body.template_id,
-    start_date: nextStart,
-    end_date: nextEnd,
-    destination: body.destination,
-    context: { parameters: nextParameters, extras: nextExtras },
-    travelers: body.travelers
-  });
-
-  await tripItemsQ.applyDiff(locals.pool, tripId, diff);
-
-  const trip = await tripsQ.getById(locals.pool, tripId);
-  const catalogById = new Map(items.map((i) => [i.id, i]));
-  const existingByItemId = new Map(existingItems.map((r) => [r.item_id ?? `__row_${r.id}`, r]));
-
-  const added = diff.added.map((g) => ({
-    item_id: g.itemId,
-    display_name: catalogById.get(g.itemId)?.display_name ?? g.itemId,
-    count: g.count
-  }));
-  const updated = diff.updated.map((u) => ({
-    item_id: u.itemId,
-    display_name: catalogById.get(u.itemId)?.display_name ?? u.itemId,
-    previous_count: u.previousCount,
-    new_count: u.newCount,
-    count_preserved: u.countPreserved
-  }));
-  const toBeRemoved = diff.toBeRemoved.map((r) => {
-    const row = existingByItemId.get(r.itemId);
-    return {
-      row_id: row?.id ?? null,
-      item_id: r.itemId,
-      display_name: catalogById.get(r.itemId)?.display_name ?? r.itemId,
-      count: r.count,
-      is_checked: row?.is_checked ?? false
-    };
-  });
-
-  return ok({
-    trip,
-    diff: {
-      added,
-      updated,
-      to_be_removed: toBeRemoved
-    }
-  });
+  return ok(await withDomainErrors(() => applyRules(locals.pool, tripId, body)));
 };
 
 export const DELETE: RequestHandler = async ({ locals, params }) => {

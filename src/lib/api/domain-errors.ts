@@ -1,3 +1,4 @@
+import { ZodError } from 'zod';
 import { ApiError, throwSvelteError } from './errors.js';
 import { BackupError } from '$lib/server/backup.js';
 import { SystemError } from '$lib/server/system.js';
@@ -11,11 +12,12 @@ const STATUS: Record<string, number> = {
   updates_not_available: 409
 };
 
-/** Maps backup/system domain errors to API errors; rethrows anything else. */
+/** Maps domain errors (ApiError, ZodError, backup/system errors) to HTTP errors; rethrows anything else. */
 export async function withDomainErrors<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (err) {
+    if (err instanceof ApiError || err instanceof ZodError) throwSvelteError(err);
     if (err instanceof BackupError || err instanceof SystemError) {
       throwSvelteError(
         new ApiError(STATUS[err.code] ?? 400, err.code, err.message !== err.code ? err.message : undefined)

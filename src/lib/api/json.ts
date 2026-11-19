@@ -1,12 +1,13 @@
 import { json } from '@sveltejs/kit';
-import type { ZodSchema } from 'zod';
+import type { ZodSchema, ZodTypeAny, output } from 'zod';
 import { ApiError, throwSvelteError } from './errors.js';
 
 export function ok<T>(data: T, init?: ResponseInit): Response {
   return json(data as unknown as Parameters<typeof json>[0], init);
 }
 
-export async function parseBody<T>(request: Request, schema: ZodSchema<T>): Promise<T> {
+// Typed by the schema's output, so fields with .default() come back non-optional.
+export async function parseBody<S extends ZodTypeAny>(request: Request, schema: S): Promise<output<S>> {
   let raw: unknown;
   try {
     raw = await request.json();
@@ -15,7 +16,7 @@ export async function parseBody<T>(request: Request, schema: ZodSchema<T>): Prom
   }
   const parsed = schema.safeParse(raw);
   if (!parsed.success) throwSvelteError(parsed.error);
-  return parsed.data;
+  return parsed.data as output<S>;
 }
 
 export function parseRouteParam<T>(
