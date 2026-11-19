@@ -830,3 +830,40 @@ The backup restore gets the same transformation as an upgrader, so a backup take
 ### 13.6 Tests
 
 Unit: scopes, split, person-tied items, the two new condition operators, merge keyed by item + person. Integration: people CRUD, travelers through generate / patch / reapply, the `0004` migration on a pre-change database, and restoring a pre-change backup (rule 9) — on MySQL and MariaDB. Component + e2e: "Who's coming" and the person label on rows.
+
+## 14. Hebrew calendar, deleting items, and orphan choices (approved November 2026)
+
+Decided with the user on 2026-11-19.
+
+### 14.1 Hebrew calendar and Chagim
+
+Built on `@hebcal/core` with the **Israel** holiday schedule (one-day Yom Tov).
+
+- **Yom Tov counts as Shabbat.** A trip's "holy days" are the dates that are Shabbat or Yom Tov (the CHAG days: Rosh Hashana, Yom Kippur, the first day of Sukkot, Shmini Atzeret, the first and last day of Pesach, Shavuot), each date counted once. `derived_has_shabbat`, `{"includes_shabbat": true}`, `per_shabbat` and the `shabbatCount` number all use holy days, so existing Shabbat rules (clothes, candles, hot plate) also fire on Yom Tov. Only how trips are generated changes; existing trip rows stay as they are until the trip is re-applied or its settings change.
+- **Also exposed separately:**
+  - `{"yom_tov": true}`: the trip includes a Yom Tov day; the number `yomTovCount` is usable in `gte`.
+  - `{"holiday": "<id>"}`: the trip overlaps that holiday. Ids: `rosh_hashana`, `yom_kippur`, `sukkot` (incl. Chol HaMoed and Hoshana Raba), `shmini_atzeret`, `chanukah`, `tu_bishvat`, `purim` (incl. Shushan Purim), `pesach` (incl. Chol HaMoed), `lag_baomer`, `shavuot`, `tisha_bav`, `yom_hazikaron`, `yom_haatzmaut`, `yom_yerushalayim`.
+  - A holiday that starts at night (Chanukah's first candle, the Seder) counts when the trip includes that evening: the erev date is in the trip and is not its last day.
+- No new parameter rows: these are condition operators, so nothing needs a migration or a display name in the database. Holiday names for the UI live in `strings.json`.
+- **Trip header:** the Hebrew date range (rendered by hebcal in Hebrew letters) and the holidays the trip overlaps. When a trip has Yom Tov days, the Shabbat count reads "Shabbat and Yom Tov days".
+
+### 14.2 Deleting any item, with undo
+
+- Any row can be deleted, rule-generated or manual (previously only manual rows). The delete is real: if a later settings change or catalog re-apply generates the item again, it comes back as a new row.
+- Pressing **minus at count 1** deletes the row; the row menu's Delete does the same.
+- Deleting shows a toast with **Undo** for 5 seconds; the server delete happens only when the toast expires (or when leaving the page). Undo restores the row as it was.
+- API: `DELETE /api/trips/:id/items/:key` accepts every row; `cannot_delete_auto_item` is gone.
+
+### 14.3 Items that no longer fit (orphans)
+
+When a settings change (or a catalog re-apply) leaves rule-generated items that no longer match, the diff modal offers a choice **per item**, plus "apply to all" buttons:
+
+- **Remove** (default): deleted, as today.
+- **Keep**: stays on the list and becomes a manual item, so the rules never ask about it again.
+- **Mark packed**: kept as manual, and checked.
+
+Cancelling the modal changes nothing (the items stay and will be listed again next time). API: `POST /api/trips/:id/regenerate` takes `remove_item_keys` plus optional `keep_item_keys` and `pack_item_keys`.
+
+### 14.4 Tests
+
+Unit: holy days across Shabbat + Yom Tov (3-day chag), holiday overlap with the erev rule, the new condition operators. Integration: deleting a rule-generated row, keep / pack via regenerate. Component: the modal's per-item choices and apply-to-all; the stepper's delete at count 1.

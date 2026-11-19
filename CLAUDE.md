@@ -229,7 +229,7 @@ See [DESIGN.md §11 — Implementation order & testing plan](DESIGN.md) for the 
 
 ## Don'ts
 
-- Don't add tasks list, shopping list, optional/priority levels, weight tracking, offline support, holiday detection beyond Shabbat, multi-language, or trip sharing. All deferred to post-v1. See `context.md` § "Out of scope for v1".
+- Don't add tasks list, shopping list, optional/priority levels, weight tracking, offline support, multi-language, or trip sharing. All deferred to post-v1. See `context.md` § "Out of scope for v1".
 - Don't introduce React, Tailwind plugins, or other heavy frontend deps before checking with the user. Default to SvelteKit's built-ins.
 - Don't write a custom auth layer. Access control belongs to Cloudflare Access (later) / the LAN (now).
 - Don't commit Excel files, MySQL dumps, `.env` files, or anything from `seed/local/`.
