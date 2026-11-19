@@ -38,6 +38,10 @@ docker compose run --rm app npm run seed:sample
 docker compose up app                          # dev server at http://localhost:5173
 ```
 
+If port 5173 is taken (on Windows, Hyper-V reserves whole port ranges — check with
+`netsh int ipv4 show excludedportrange protocol=tcp`), set `APP_PORT_HOST` in `.env`
+to a free port; the container keeps listening on 5173 internally.
+
 The container points at `db_dev` by default. Override with `APP_DB_TARGET=test` to hit the tmpfs test database (used automatically by the e2e service).
 
 ## Tests
@@ -67,9 +71,33 @@ The e2e suite drives every key flow (empty list, new-trip, packing-check, kit ex
 ## Data layout
 
 - `seed/sample/` — generic placeholder catalog (committed). Useful for fresh-clone bootstraps and documenting YAML shape.
-- `seed/local/` — your personal catalog (**gitignored**). Produced by `extract:excel` or hand-edited. Use bag ids from the `view.bags` map in `src/lib/strings.json` (`main_bag`, `small_bag`, `suitcase`, `carry_on`) so the UI can render Hebrew bag names; unknown ids fall back to the raw id.
+- `seed/local/` — your personal catalog (**gitignored**). Produced by `extract:excel` or hand-edited. Also holds `extract-config.yaml` (the spreadsheet mapping, see below) and `extract-report.txt`. Use bag ids from the `view.bags` map in `src/lib/strings.json` (`main_bag`, `small_bag`, `suitcase`, `carry_on`) so the UI can render Hebrew bag names; unknown ids fall back to the raw id.
 - `tests/fixtures/` — pure mock data used by unit, integration, and e2e tests.
 - Source spreadsheet — stays outside the repo. Drop it into `./.data/source.xlsx` (gitignored) and `PACKING_EXCEL_PATH=/data/source.xlsx` reaches it from the container.
+
+## Importing a personal spreadsheet
+
+The spreadsheet is a free-form grid — several column blocks per sheet, each under a
+category header, with quantities baked into names (`3 shirts`, `socks*8`) and `?`
+marking a maybe. None of that is inferable, so the extractor is config-driven:
+
+1. Drop the workbook at `./.data/source.xlsx`.
+2. Write `seed/local/extract-config.yaml` — the schema lives in
+   `src/lib/schemas/extract-config.ts`. It declares the parameter catalog, which
+   sheets become templates, and, per sheet, which `(column, row-range)` maps to which
+   category / bag / parameters. Grid sheets use `columns:`; a sheet that is a real
+   table (one row per item) uses `mode: table`. `ignore`, `aliases`,
+   `quantity_rules`, and `item_overrides` clean up the rest.
+3. `docker compose run --rm app npm run extract:excel`
+4. Read `seed/local/extract-report.txt`: it lists cells in unmapped columns (nothing
+   is dropped silently), what the ignore list swallowed, items seen only once, and
+   items whose quantity fell back to `fixed: 1`. Adjust the config and re-run.
+5. Review the `# REVIEW:` comments in the generated `items.yaml`, then
+   `docker compose run --rm app npm run seed:local`.
+
+The generated catalog is a draft: conditions come from the parameters attached to the
+columns an item appeared in, and an item seen on `base_threshold` or more templated
+sheets becomes an unconditional base item.
 
 ## Project layout
 

@@ -1,6 +1,6 @@
 # HANDOFF — state of the project and what's next
 
-_Last updated: 2026-07-17, after the UI/UX gap-closure pass._
+_Last updated: 2026-08-31, after the personal-catalog import pass._
 
 ## Where things stand
 
@@ -18,7 +18,7 @@ Test surface (all green as of the last commit):
 
 | Suite | Command | Count |
 |---|---|---|
-| Unit | `docker compose run --rm app npm test` | 170 |
+| Unit | `docker compose run --rm app npm test` | 191 |
 | Integration (db_test) | `docker compose run --rm app npm run test:integration` | 60 |
 | Component (jsdom) | `docker compose run --rm app npm run test:component` | 76 |
 | E2E (Playwright in Docker) | `docker compose run --rm e2e` | 29 |
@@ -64,16 +64,33 @@ Nothing here has been started beyond stubs. Steps:
 
 Auth stays at the hosting layer — do not build login (CLAUDE.md § "Don'ts").
 
-### 2. Seed the real catalog (can happen before or after deploy)
+### 2. Review the generated personal catalog
 
-The committed catalog (`seed/sample/`) is generic placeholder data. The personal
-catalog lives in gitignored `seed/local/`, produced by
-`docker compose run --rm app npm run extract:excel` (drop the spreadsheet at
-`./.data/source.xlsx` first) and loaded with `npm run seed:local`. Then review the
-generated YAML by hand — that's the intended workflow (YAML is the source of truth,
-DB is a derived index). Bag ids in the personal catalog should use the keys of
-`strings.json → view.bags` (`main_bag`, `small_bag`, `suitcase`, `carry_on`) or the
-by-bag view will show raw ids.
+Done, but it is a *draft*. `src/lib/seed/extract-from-excel.ts` was rewritten as a
+config-driven engine (pure transform in `src/lib/seed/extract.ts`, config schema in
+`src/lib/schemas/extract-config.ts`): the personal mapping lives in the gitignored
+`seed/local/extract-config.yaml`, which declares the parameter catalog, which sheets
+become templates, and which `(column, row-range)` carries which category / bag /
+parameters. Running `npm run extract:excel` currently yields 22 parameters, 278 items
+and 9 templates, loaded into `db_dev` with `npm run seed:local`.
+
+What still wants a human pass:
+
+- Every generated item carries a `# REVIEW:` comment naming its source sheets and
+  flagging guessed quantities. Most quantities are `fixed: 1`; only the clothing
+  staples got real formulas (`per_day`, `per_n_days`, `per_shabbat`).
+- Conditions are derived from the parameters attached to the columns an item appeared
+  in. Items found on 4+ templated sheets became unconditional base items
+  (`base_threshold` in the config). Items seen on a single sheet often end up with an
+  `all_params` condition that is narrower than reality.
+- `seed/local/extract-report.txt` lists the cells in unmapped columns — mostly
+  personal notes and shopping lists that were deliberately left out.
+- A few institution-stay sheets are declared with `skip: true` in the config. Their items
+  are near-duplicates of the sheets already mapped; flip the flag and add column maps
+  to fold them in.
+- Editing the YAML by hand and re-running `seed:local` stays the intended workflow —
+  a re-run of `extract:excel` overwrites `items.yaml`, so fold durable corrections
+  back into the config (`aliases`, `quantity_rules`, `item_overrides`).
 
 ### 3. Phase 5 — items editor, easy mode (DESIGN.md §10.1)
 
@@ -118,7 +135,9 @@ and CLAUDE.md § "Don'ts".
 ## Conventions that will bite you if forgotten
 
 - **Docker only.** Never run bare `npm`/`node` on the host; every command goes through
-  `docker compose run --rm app …` (or the `e2e` service for Playwright).
+  `docker compose run --rm app …` (or the `e2e` service for Playwright). The dev
+  server's host port is `APP_PORT_HOST` in `.env` (5173 by default; Hyper-V reserves
+  that range on some Windows machines).
 - **Hebrew only in `src/lib/strings.json`** (and `seed/local/`). Tests import strings
   from there — never re-type Hebrew literals, not even in comments. Guard:
   `git grep -lP '[\x{0590}-\x{05FF}]' -- ':!src/lib/strings.json' ':!seed/local'`

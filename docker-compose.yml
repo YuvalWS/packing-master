@@ -8,7 +8,7 @@ services:
       - /app/node_modules
       - ./.data:/data
     ports:
-      - "5173:5173"
+      - "${APP_PORT_HOST:-5173}:5173"
     env_file: .env
     depends_on:
       db_dev:
