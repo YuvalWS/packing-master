@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { PageData } from './$types.js';
-  import { invalidate, goto } from '$app/navigation';
+  import { invalidate, goto, beforeNavigate } from '$app/navigation';
+  import { onDestroy } from 'svelte';
   import { Settings, Search, X, MoreHorizontal, Trash2 } from '@lucide/svelte';
   import PackingListRow from '$lib/components/PackingListRow.svelte';
   import KitComponentRow from '$lib/components/KitComponentRow.svelte';
@@ -42,6 +43,12 @@
   let kitComponents = $state<KitComponentRowState[]>(data.kitComponents);
   let toastMsg = $state<string | null>(null);
   let toastTone = $state<'info' | 'success' | 'danger'>('info');
+  let toastAction = $state<{ label: string; onClick: () => void } | null>(null);
+
+  // Deletes wait 5 s for Undo before reaching the server (DESIGN.md 14.2).
+  const UNDO_MS = 5000;
+  let hiddenRowIds = $state<Set<number>>(new Set());
+  const pendingDeletes = new Map<number, ReturnType<typeof setTimeout>>();
   let expandedKits = $state<Set<number>>(new Set());
   let addSheetOpen = $state(false);
   let menuItem = $state<EnrichedItem | null>(null);
@@ -73,7 +80,7 @@
   }
 
   $effect(() => {
-    items = data.items;
+    items = data.items.filter((it) => !hiddenRowIds.has(it.row_id));
     kitComponents = data.kitComponents;
   });
 
@@ -205,9 +212,65 @@
   });
 
   function showToast(msg: string, tone: 'info' | 'success' | 'danger' = 'info') {
+    toastAction = null;
     toastTone = tone;
     toastMsg = msg;
   }
+
+  function setHidden(rowId: number, hidden: boolean) {
+    const next = new Set(hiddenRowIds);
+    if (hidden) next.add(rowId);
+    else next.delete(rowId);
+    hiddenRowIds = next;
+  }
+
+  function deleteWithUndo(item: EnrichedItem) {
+    const rowId = item.row_id;
+    menuItem = null;
+    setHidden(rowId, true);
+    pendingDeletes.set(rowId, setTimeout(() => void commitDelete(rowId), UNDO_MS));
+    const name = item.person_name ? `${item.display_name} (${item.person_name})` : item.display_name;
+    toastTone = 'info';
+    toastMsg = strings.row_menu.deleted_undo.replace('{name}', name);
+    toastAction = { label: strings.row_menu.undo, onClick: () => undoDelete(rowId) };
+  }
+
+  function undoDelete(rowId: number) {
+    const timer = pendingDeletes.get(rowId);
+    if (timer) clearTimeout(timer);
+    pendingDeletes.delete(rowId);
+    setHidden(rowId, false);
+    toastMsg = null;
+    toastAction = null;
+  }
+
+  async function commitDelete(rowId: number) {
+    pendingDeletes.delete(rowId);
+    try {
+      await makeApi().deleteTripItem(data.trip.id, rowId);
+      await invalidate(`trip:${data.trip.id}`);
+      setHidden(rowId, false);
+    } catch {
+      setHidden(rowId, false);
+      showToast(strings.packing_list.save_failed, 'danger');
+    }
+  }
+
+  // Leaving the page sends the waiting deletes right away; keepalive survives a reload.
+  function flushDeletes() {
+    for (const [rowId, timer] of pendingDeletes) {
+      clearTimeout(timer);
+      void fetch(`/api/trips/${data.trip.id}/items/${rowId}`, { method: 'DELETE', keepalive: true });
+    }
+    pendingDeletes.clear();
+  }
+
+  beforeNavigate(flushDeletes);
+  onDestroy(flushDeletes);
+  $effect(() => {
+    window.addEventListener('pagehide', flushDeletes);
+    return () => window.removeEventListener('pagehide', flushDeletes);
+  });
 
   async function patchItem(item: EnrichedItem, patch: { is_checked?: boolean; count?: number }) {
     const previous = { ...item };
@@ -272,16 +335,8 @@
     }
   }
 
-  async function deleteManualItem(item: EnrichedItem) {
-    try {
-      const api = makeApi();
-      await api.deleteTripItem(data.trip.id, item.row_id);
-      menuItem = null;
-      showToast(strings.row_menu.deleted_toast, 'success');
-      await invalidate(`trip:${data.trip.id}`);
-    } catch {
-      showToast(strings.packing_list.save_failed, 'danger');
-    }
+  async function deleteFromMenu(item: EnrichedItem) {
+    deleteWithUndo(item);
   }
 
   function toggleKitExpand(rowId: number) {
@@ -359,10 +414,25 @@
     · <span class="ltr-number">{data.derived.days}</span>
     {data.derived.days === 1 ? strings.common.day_one : strings.common.day_many}
     {#if data.derived.hasShabbat}
-      · {data.derived.shabbatCount === 1
-        ? strings.trip_header.shabbat_one
-        : strings.trip_header.shabbat_many.replace('{count}', String(data.derived.shabbatCount))}
+      ·
+      {#if data.derived.yomTovCount > 0}
+        {data.derived.shabbatCount === 1
+          ? strings.trip_header.holy_one
+          : strings.trip_header.holy_many.replace('{count}', String(data.derived.shabbatCount))}
+      {:else}
+        {data.derived.shabbatCount === 1
+          ? strings.trip_header.shabbat_one
+          : strings.trip_header.shabbat_many.replace('{count}', String(data.derived.shabbatCount))}
+      {/if}
     {/if}
+  </p>
+  <p class="hebrew-dates">
+    {data.derived.hebrewStart === data.derived.hebrewEnd
+      ? data.derived.hebrewStart
+      : `${data.derived.hebrewStart} – ${data.derived.hebrewEnd}`}
+    {#each data.derived.holidays as h (h)}
+      <span class="holiday">{strings.holidays[h]}</span>
+    {/each}
   </p>
 
   <div class="param-chips">
@@ -437,6 +507,7 @@
             onCountChange={(next) => patchItem(item, { count: next })}
             onToggleExpand={() => toggleKitExpand(item.row_id)}
             onOpenMenu={() => (menuItem = item)}
+            onDelete={row.split ? undefined : () => deleteWithUndo(item)}
           />
           {#if item.is_kit && item.kit_contents && expanded}
             <ul
@@ -484,7 +555,7 @@
   {knownBags}
   onSaveNote={saveNote}
   onSaveSplit={saveSplit}
-  onDelete={deleteManualItem}
+  onDelete={deleteFromMenu}
   onClose={() => (menuItem = null)}
 />
 
@@ -527,9 +598,34 @@
   {/if}
 </BottomSheet>
 
-<Toast message={toastMsg} tone={toastTone} onDismiss={() => (toastMsg = null)} />
+<Toast
+  message={toastMsg}
+  tone={toastTone}
+  action={toastAction}
+  durationMs={toastAction ? UNDO_MS : 3000}
+  onDismiss={() => {
+    toastMsg = null;
+    toastAction = null;
+  }}
+/>
 
 <style>
+  .hebrew-dates {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-text-muted);
+    font-size: var(--fs-meta);
+  }
+
+  .holiday {
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    background: var(--color-warning-soft);
+    color: var(--color-text);
+  }
+
   .trip-head {
     display: flex;
     flex-direction: column;

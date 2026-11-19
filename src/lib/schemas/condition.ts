@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { HOLIDAY_IDS, type HolidayId } from '../rules/holidays.js';
 
 // Discriminated union for the condition DSL. Recursive via z.lazy.
 //
@@ -14,6 +15,8 @@ import { z } from 'zod';
 //   { includes_shabbat: true }               — derived helper
 //   { person: "id" }                         — that person is travelling
 //   { kind: "baby" }                         — at least one traveler of that kind
+//   { yom_tov: true }                        — the dates include a Yom Tov day
+//   { holiday: "chanukah" }                  — the dates overlap that holiday
 
 export type Condition =
   | true
@@ -27,7 +30,9 @@ export type Condition =
   | { all_params: string[] }
   | { includes_shabbat: true }
   | { person: string }
-  | { kind: 'adult' | 'kid' | 'baby' };
+  | { kind: 'adult' | 'kid' | 'baby' }
+  | { yom_tov: true }
+  | { holiday: HolidayId };
 
 export const ConditionSchema: z.ZodType<Condition> = z.lazy(() =>
   z.union([
@@ -46,6 +51,8 @@ export const ConditionSchema: z.ZodType<Condition> = z.lazy(() =>
     z.object({ all_params: z.array(z.string().min(1)) }).strict(),
     z.object({ includes_shabbat: z.literal(true) }).strict(),
     z.object({ person: z.string().min(1) }).strict(),
-    z.object({ kind: z.enum(['adult', 'kid', 'baby']) }).strict()
+    z.object({ kind: z.enum(['adult', 'kid', 'baby']) }).strict(),
+    z.object({ yom_tov: z.literal(true) }).strict(),
+    z.object({ holiday: z.enum(HOLIDAY_IDS) }).strict()
   ])
 );

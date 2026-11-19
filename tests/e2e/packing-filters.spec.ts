@@ -39,11 +39,17 @@ test('header meta shows the day count and shabbat info', async ({ page, request 
   await expect(page.getByText(daysSegment).first()).toBeVisible();
 
   expect(derived.hasShabbat).toBe(true);
+  // Yom Tov counts as Shabbat (DESIGN.md 14.1); these dates include Shavuot.
+  const [one, many] =
+    derived.yomTovCount > 0
+      ? [strings.trip_header.holy_one, strings.trip_header.holy_many]
+      : [strings.trip_header.shabbat_one, strings.trip_header.shabbat_many];
   const shabbatSegment =
-    derived.shabbatCount === 1
-      ? strings.trip_header.shabbat_one
-      : strings.trip_header.shabbat_many.replace('{count}', String(derived.shabbatCount));
+    derived.shabbatCount === 1 ? one : many.replace('{count}', String(derived.shabbatCount));
   await expect(page.getByText(shabbatSegment)).toBeVisible();
+  for (const h of derived.holidays) {
+    await expect(page.getByText(strings.holidays[h], { exact: true })).toBeVisible();
+  }
 });
 
 test('tapping the progress counter cycles required/optional/all filters', async ({

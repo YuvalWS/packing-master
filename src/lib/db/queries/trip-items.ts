@@ -325,14 +325,38 @@ export async function insertManualFreeText(
   return getByKey(pool, tripId, { rowId: res.insertId });
 }
 
-export async function deleteManual(
+/**
+ * Deletes any row, rule-generated or manual (DESIGN.md 14.2). A rule-generated item may
+ * come back as a new row on a later settings change or catalog re-apply.
+ */
+export async function deleteRow(pool: Pool, tripId: number, key: TripItemKey): Promise<boolean> {
+  const row = await getByKey(pool, tripId, key);
+  if (!row) return false;
+  await pool.execute<ResultSetHeader>('DELETE FROM trip_items WHERE id = ?', [row.id]);
+  return true;
+}
+
+/** Keeps rule-generated rows the rules no longer want: they become manual (DESIGN.md 14.3). */
+export async function adoptAutoItems(
   pool: Pool,
   tripId: number,
-  key: TripItemKey
-): Promise<{ deleted: boolean; blockedAuto: boolean; notFound: boolean }> {
-  const row = await getByKey(pool, tripId, key);
-  if (!row) return { deleted: false, blockedAuto: false, notFound: true };
-  if (!row.is_manual) return { deleted: false, blockedAuto: true, notFound: false };
-  await pool.execute<ResultSetHeader>('DELETE FROM trip_items WHERE id = ?', [row.id]);
-  return { deleted: true, blockedAuto: false, notFound: false };
+  keys: readonly RemoveItem[],
+  markChecked: boolean
+): Promise<number> {
+  let adopted = 0;
+  for (const key of keys) {
+    const where =
+      key.rowId != null
+        ? { sql: 'id = ?', args: [key.rowId] }
+        : key.personId !== undefined
+          ? { sql: 'item_id = ? AND person_id = ?', args: [key.itemId!, key.personId] }
+          : { sql: 'item_id = ?', args: [key.itemId!] };
+    const [res] = await pool.execute<ResultSetHeader>(
+      `UPDATE trip_items SET is_manual = TRUE${markChecked ? ', is_checked = TRUE' : ''}
+        WHERE trip_id = ? AND is_manual = FALSE AND ${where.sql}`,
+      [tripId, ...where.args]
+    );
+    adopted += res.affectedRows;
+  }
+  return adopted;
 }

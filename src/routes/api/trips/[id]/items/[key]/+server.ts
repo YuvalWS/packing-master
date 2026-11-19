@@ -38,8 +38,7 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
   const key = resolveKey(params.key);
   await requireTrip(locals.pool, tripId);
 
-  const result = await withDomainErrors(() => tripItemsQ.deleteManual(locals.pool, tripId, key));
-  if (result.notFound) throwSvelteError(new ApiError(404, 'trip_item_not_found'));
-  if (result.blockedAuto) throwSvelteError(new ApiError(400, 'cannot_delete_auto_item'));
+  const deleted = await withDomainErrors(() => tripItemsQ.deleteRow(locals.pool, tripId, key));
+  if (!deleted) throwSvelteError(new ApiError(404, 'trip_item_not_found'));
   return ok({ deleted: true });
 };

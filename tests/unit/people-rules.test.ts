@@ -132,3 +132,21 @@ describe('merge keyed by item and person', () => {
     expect(diff.toBeRemoved.map((r) => r.personId)).toEqual(['dad']);
   });
 });
+
+describe('yom_tov and holiday conditions', () => {
+  it('see the holidays in the trip dates', () => {
+    const run = (start: string, end: string, when: Item['include_when']) =>
+      generate({
+        items: [item('x', { include_when: when })],
+        parameters: PARAMS,
+        userParams: ['accom_a'],
+        startISO: start,
+        endISO: end
+      }).items.length === 1;
+    expect(run('2027-06-10', '2027-06-12', { yom_tov: true })).toBe(true);
+    expect(run('2027-06-10', '2027-06-12', { holiday: 'shavuot' })).toBe(true);
+    expect(run('2026-12-04', '2026-12-06', { holiday: 'chanukah' })).toBe(true);
+    expect(run('2026-11-20', '2026-11-22', { holiday: 'chanukah' })).toBe(false);
+    expect(run('2026-11-20', '2026-11-22', { yom_tov: true })).toBe(false);
+  });
+});

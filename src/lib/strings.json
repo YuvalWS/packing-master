@@ -90,7 +90,9 @@
   },
   "trip_header": {
     "shabbat_one": "שבת",
-    "shabbat_many": "{count} שבתות"
+    "shabbat_many": "{count} שבתות",
+    "holy_one": "יום שבת או חג אחד",
+    "holy_many": "{count} ימי שבת וחג"
   },
   "trip_menu": {
     "title": "אפשרויות טיול",
@@ -125,7 +127,9 @@
     "delete_confirm": "למחוק את הפריט?",
     "split_total_hint": "סה\"כ חייב להיות {count}",
     "saved_toast": "נשמר",
-    "deleted_toast": "הפריט הוסר"
+    "deleted_toast": "הפריט הוסר",
+    "undo": "בטל",
+    "deleted_undo": "{name} נמחק"
   },
   "settings": {
     "title": "הגדרות טיול",
@@ -141,13 +145,18 @@
     "title": "אישור עדכון",
     "added_heading": "נוספו",
     "updated_heading": "עודכנו",
-    "removed_heading": "יוסרו אם תאשר",
+    "removed_heading": "כבר לא מתאימים לטיול",
     "count_preserved_note": "(נשמר ידנית: {count})",
     "was_checked_tag": "סומן",
     "checked_warning_one": "אחד מהם כבר סימנת",
     "checked_warning_many": "{count} מהם כבר סימנת",
-    "confirm": "אשר ועדכן",
-    "cancel": "השאר כפי שזה"
+    "confirm": "אשר",
+    "cancel": "השאר כפי שזה",
+    "choice_remove": "הסר",
+    "choice_keep": "השאר",
+    "choice_pack": "סמן כארוז",
+    "apply_all": "לכולם:",
+    "choice_group": "מה לעשות עם {name}"
   },
   "items_catalog": {
     "search_placeholder": "חפש פריט בקטלוג…",
@@ -191,7 +200,9 @@
     "gte": "{path} ≥ {value}",
     "includes_shabbat": "כולל שבת",
     "person": "{name} מגיע/ה",
-    "kind": "מגיע/ה {kind}"
+    "kind": "מגיע/ה {kind}",
+    "yom_tov": "כולל יום טוב",
+    "holiday": "בזמן {name}"
   },
   "quantity": {
     "fixed": "{n} (קבוע)",
@@ -310,5 +321,21 @@
     "combined": "בשורה אחת",
     "split": "שורה לכל אחד",
     "for_person": "רק עבור {name}"
+  },
+  "holidays": {
+    "rosh_hashana": "ראש השנה",
+    "yom_kippur": "יום כיפור",
+    "sukkot": "סוכות",
+    "shmini_atzeret": "שמיני עצרת",
+    "chanukah": "חנוכה",
+    "tu_bishvat": "ט״ו בשבט",
+    "purim": "פורים",
+    "pesach": "פסח",
+    "lag_baomer": "ל״ג בעומר",
+    "shavuot": "שבועות",
+    "tisha_bav": "תשעה באב",
+    "yom_hazikaron": "יום הזיכרון",
+    "yom_haatzmaut": "יום העצמאות",
+    "yom_yerushalayim": "יום ירושלים"
   }
 }

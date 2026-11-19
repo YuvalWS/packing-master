@@ -44,5 +44,11 @@ export function formatCondition(cond: Condition, names?: ReadonlyMap<string, str
   if ('kind' in cond) {
     return strings.condition.kind.replace('{kind}', strings.people.kinds[cond.kind]);
   }
+  if ('yom_tov' in cond) {
+    return strings.condition.yom_tov;
+  }
+  if ('holiday' in cond) {
+    return strings.condition.holiday.replace('{name}', strings.holidays[cond.holiday]);
+  }
   return JSON.stringify(cond);
 }

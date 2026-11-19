@@ -1,11 +1,17 @@
-import { shabbatInfo } from './shabbat.js';
+import { shabbatInfo, type HolidayId } from './shabbat.js';
 
 export interface DerivedTrip {
   days: number;
   weekdays: number;
   weekends: number;
+  /** Shabbat or Yom Tov in the dates (Yom Tov counts as Shabbat, DESIGN.md 14.1). */
   hasShabbat: boolean;
+  /** Holy days: Shabbat and Yom Tov dates, each counted once. */
   shabbatCount: number;
+  yomTovCount: number;
+  holidays: HolidayId[];
+  hebrewStart: string;
+  hebrewEnd: string;
   longTrip: boolean;
   shortTrip: boolean;
   derivedParamIds: string[];
@@ -46,7 +52,10 @@ function dayCounts(startISO: string, endISO: string): {
 
 export function derive(startISO: string, endISO: string): DerivedTrip {
   const { days, weekdays, weekends } = dayCounts(startISO, endISO);
-  const { hasShabbat, shabbatCount } = shabbatInfo(startISO, endISO);
+  const { hasShabbat, shabbatCount, yomTovCount, holidays, hebrewStart, hebrewEnd } = shabbatInfo(
+    startISO,
+    endISO
+  );
   const longTrip = days >= LONG_TRIP_DAYS;
   const shortTrip = days <= SHORT_TRIP_DAYS;
 
@@ -61,6 +70,10 @@ export function derive(startISO: string, endISO: string): DerivedTrip {
     weekends,
     hasShabbat,
     shabbatCount,
+    yomTovCount,
+    holidays,
+    hebrewStart,
+    hebrewEnd,
     longTrip,
     shortTrip,
     derivedParamIds

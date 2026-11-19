@@ -166,8 +166,12 @@ export interface PatchTripResponse {
   };
 }
 
+type RowKey = { item_id: string; person_id?: string } | { row_id: number };
+
 export interface RegenerateBody {
-  remove_item_keys: ({ item_id: string } | { row_id: number })[];
+  remove_item_keys: RowKey[];
+  keep_item_keys?: RowKey[];
+  pack_item_keys?: RowKey[];
 }
 
 export interface AddCatalogItemBody {
@@ -205,7 +209,7 @@ export interface Api {
   createTrip(body: CreateTripBody): Promise<CreateTripResponse>;
   patchTrip(id: number, body: PatchTripBody): Promise<PatchTripResponse>;
   deleteTrip(id: number): Promise<{ deleted: true }>;
-  regenerateTrip(id: number, body: RegenerateBody): Promise<{ deleted: number }>;
+  regenerateTrip(id: number, body: RegenerateBody): Promise<{ deleted: number; kept: number; packed: number }>;
   patchTripItem(
     tripId: number,
     key: string | number,
@@ -245,7 +249,7 @@ export function makeApi(fetcher: Fetcher = fetch): Api {
     deleteTrip: (id) =>
       request<{ deleted: true }>(fetcher, 'DELETE', `/api/trips/${id}`),
     regenerateTrip: (id, body) =>
-      request<{ deleted: number }>(fetcher, 'POST', `/api/trips/${id}/regenerate`, body),
+      request<{ deleted: number; kept: number; packed: number }>(fetcher, 'POST', `/api/trips/${id}/regenerate`, body),
     patchTripItem: (tripId, key, body) =>
       request<{ item: DbTripItemRow }>(
         fetcher,
@@ -292,3 +296,11 @@ export function makeApi(fetcher: Fetcher = fetch): Api {
 }
 
 export type { TripRow, TripRowWithItemCount, Parameter, Template, Item };
+
+/** What to do with items a settings change left behind (DESIGN.md 14.3). */
+export type OrphanChoice = 'remove' | 'keep' | 'pack';
+export interface OrphanDecisions {
+  remove: PatchTripDiffRemoved[];
+  keep: PatchTripDiffRemoved[];
+  pack: PatchTripDiffRemoved[];
+}

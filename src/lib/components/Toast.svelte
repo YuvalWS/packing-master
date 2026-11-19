@@ -4,9 +4,11 @@
     onDismiss?: () => void;
     durationMs?: number;
     tone?: 'info' | 'success' | 'danger';
+    /** An action button inside the toast, e.g. Undo. */
+    action?: { label: string; onClick: () => void } | null;
   }
 
-  let { message, onDismiss, durationMs = 3000, tone = 'info' }: Props = $props();
+  let { message, onDismiss, durationMs = 3000, tone = 'info', action = null }: Props = $props();
 
   let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -27,8 +29,11 @@
 </script>
 
 {#if message}
-  <div class="toast" data-tone={tone} role="status" aria-live="polite">
+  <div class="toast" class:has-action={action} data-tone={tone} role="status" aria-live="polite">
     {message}
+    {#if action}
+      <button type="button" class="toast-action" onclick={action.onClick}>{action.label}</button>
+    {/if}
   </div>
 {/if}
 
@@ -58,6 +63,20 @@
     .toast {
       inset-inline-start: calc(50% + (var(--drawer-width) / 2));
     }
+  }
+
+  .toast.has-action {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    pointer-events: auto;
+  }
+
+  .toast-action {
+    color: #93c5fd;
+    font-weight: 700;
+    font-size: var(--fs-body);
+    cursor: pointer;
   }
 
   .toast[data-tone='danger'] {

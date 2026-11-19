@@ -6,7 +6,7 @@
   import TravelerSelector from '$lib/components/TravelerSelector.svelte';
   import RegenDiffModal from '$lib/components/RegenDiffModal.svelte';
   import Toast from '$lib/components/Toast.svelte';
-  import type { PatchTripResponse, PatchTripDiffRemoved } from '$lib/client/api.js';
+  import type { PatchTripResponse, PatchTripDiffRemoved, OrphanDecisions } from '$lib/client/api.js';
   import { makeApi } from '$lib/client/api.js';
   import { derive, type DerivedTrip } from '$lib/rules/derived.js';
   import { formatDateRange } from '$lib/util/format-date.js';
@@ -82,19 +82,20 @@
     }
   }
 
-  async function confirmRemoval(picks: PatchTripDiffRemoved[]) {
-    if (picks.length === 0 || !pendingDiff) {
-      pendingDiff = null;
+  async function confirmRemoval(decisions: OrphanDecisions) {
+    if (!pendingDiff) {
       goto(`/trips/${data.trip.id}`);
       return;
     }
+    const keys = (rows: PatchTripDiffRemoved[]) =>
+      rows.filter((p) => p.row_id !== null).map((p) => ({ row_id: p.row_id as number }));
     submitting = true;
     try {
       const api = makeApi();
       await api.regenerateTrip(data.trip.id, {
-        remove_item_keys: picks
-          .filter((p) => p.row_id !== null)
-          .map((p) => ({ row_id: p.row_id as number }))
+        remove_item_keys: keys(decisions.remove),
+        keep_item_keys: keys(decisions.keep),
+        pack_item_keys: keys(decisions.pack)
       });
       toastTone = 'success';
       toastMsg = strings.settings.saved_toast;

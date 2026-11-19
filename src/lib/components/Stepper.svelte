@@ -8,12 +8,15 @@
     max?: number;
     disabled?: boolean;
     onChange: (next: number) => void;
+    /** Minus at the minimum calls this instead of being disabled (e.g. delete the row). */
+    onBelowMin?: () => void;
   }
 
-  let { value, min = 0, max = 999, disabled = false, onChange }: Props = $props();
+  let { value, min = 0, max = 999, disabled = false, onChange, onBelowMin }: Props = $props();
 
   function dec() {
     if (value > min) onChange(value - 1);
+    else onBelowMin?.();
   }
 
   function inc() {
@@ -27,7 +30,7 @@
     class="step-btn"
     aria-label={strings.a11y_row.decrement}
     onclick={dec}
-    disabled={disabled || value <= min}
+    disabled={disabled || (value <= min && !onBelowMin)}
   >
     <Minus size={16} />
   </button>

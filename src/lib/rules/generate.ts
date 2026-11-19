@@ -89,12 +89,14 @@ export function generate(input: GenerateInput): GenerateResult {
 
   const evalCtx = {
     travelers,
+    holidays: new Set<string>(derived.holidays),
     activeParams: active,
     params: {
       days: derived.days,
       weekdays: derived.weekdays,
       weekends: derived.weekends,
       shabbatCount: derived.shabbatCount,
+      yomTovCount: derived.yomTovCount,
       ...(input.extraContext ?? {})
     }
   };

@@ -186,18 +186,16 @@ describe('DELETE /api/trips/[id]/items/[key]', () => {
     expect(await tripItemsQ.getByKey(s.pool, t.trip.id, { rowId })).toBeNull();
   });
 
-  it('refuses to delete an auto-generated row and keeps it', async () => {
+  it('deletes a rule-generated row too (DESIGN.md 14.2)', async () => {
     const t = await createTrip();
-    await expect(
-      tripItemDelete(
-        buildEvent(s.pool, {
-          method: 'DELETE',
-          params: { id: String(t.trip.id), key: 'item_per_day' }
-        })
-      )
-    ).rejects.toMatchObject({ status: 400 });
-    const still = await tripItemsQ.getByKey(s.pool, t.trip.id, { itemId: 'item_per_day' });
-    expect(still).not.toBeNull();
+    const res = await tripItemDelete(
+      buildEvent(s.pool, {
+        method: 'DELETE',
+        params: { id: String(t.trip.id), key: 'item_per_day' }
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(await tripItemsQ.getByKey(s.pool, t.trip.id, { itemId: 'item_per_day' })).toBeNull();
   });
 
   it('404s when the key is not on the trip', async () => {

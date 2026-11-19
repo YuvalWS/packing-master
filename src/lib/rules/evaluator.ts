@@ -10,6 +10,8 @@ export interface EvalContext {
   params: Readonly<Record<string, unknown>>;
   /** Who is coming; undefined for trips without people (person/kind are then false). */
   travelers?: readonly Traveler[];
+  /** Holiday ids the trip overlaps (DESIGN.md 14.1). */
+  holidays?: ReadonlySet<string>;
 }
 
 function readPath(obj: Record<string, unknown>, path: string): unknown {
@@ -73,6 +75,15 @@ export function evaluate(condition: Condition, ctx: EvalContext): boolean {
 
   if ('kind' in condition) {
     return ctx.travelers?.some((t) => t.kind === condition.kind) ?? false;
+  }
+
+  if ('yom_tov' in condition) {
+    const n = ctx.params.yomTovCount;
+    return typeof n === 'number' && n > 0;
+  }
+
+  if ('holiday' in condition) {
+    return ctx.holidays?.has(condition.holiday) ?? false;
   }
 
   // Exhaustiveness guard: TypeScript can't see the path with `in`-narrowing

@@ -166,6 +166,14 @@
                 )}
           {/if}
         </p>
+        <p class="days-hint">
+          {derivedTrip.hebrewStart === derivedTrip.hebrewEnd
+            ? derivedTrip.hebrewStart
+            : `${derivedTrip.hebrewStart} – ${derivedTrip.hebrewEnd}`}
+          {#each derivedTrip.holidays as h (h)}
+            · {strings.holidays[h]}
+          {/each}
+        </p>
       {/if}
 
       <label class="field">

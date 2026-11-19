@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/svelte';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/svelte';
 import RegenDiffModal from '../../src/lib/components/RegenDiffModal.svelte';
-import type { PatchTripDiffRemoved } from '../../src/lib/client/api.js';
+import type { PatchTripDiffRemoved, OrphanDecisions } from '../../src/lib/client/api.js';
 import strings from '../../src/lib/strings.js';
 
 afterEach(cleanup);
@@ -142,12 +142,16 @@ describe('RegenDiffModal', () => {
         onCancel: vi.fn()
       }
     });
-    const checkboxes = screen.getAllByRole('checkbox') as HTMLInputElement[];
-    expect(checkboxes).toHaveLength(2);
-    expect(checkboxes.every((c) => c.checked)).toBe(true);
+    const groups = screen.getAllByRole('radiogroup');
+    expect(groups).toHaveLength(2);
+    const selected = screen
+      .getAllByRole('radio')
+      .filter((r) => r.getAttribute('aria-checked') === 'true')
+      .map((r) => r.textContent?.trim());
+    expect(selected).toEqual([strings.regen.choice_remove, strings.regen.choice_remove]);
   });
 
-  it('unchecking a removal omits it from the onConfirm payload', async () => {
+  it('sends each item with its choice: remove, keep or mark packed', async () => {
     const onConfirm = vi.fn();
     render(RegenDiffModal, {
       props: {
@@ -159,13 +163,27 @@ describe('RegenDiffModal', () => {
         onCancel: vi.fn()
       }
     });
-    const [first] = screen.getAllByRole('checkbox');
-    await fireEvent.click(first!);
+    const [first, second] = screen.getAllByRole('radiogroup');
+    await fireEvent.click(within(first!).getByRole('radio', { name: strings.regen.choice_keep }));
+    await fireEvent.click(within(second!).getByRole('radio', { name: strings.regen.choice_pack }));
     await fireEvent.click(screen.getByRole('button', { name: strings.regen.confirm }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
-    const arg = onConfirm.mock.calls[0]![0] as PatchTripDiffRemoved[];
-    expect(arg).toHaveLength(1);
-    expect(arg[0]!.row_id).toBe(12);
+    const arg = onConfirm.mock.calls[0]![0] as OrphanDecisions;
+    expect(arg.remove).toEqual([]);
+    expect(arg.keep.map((r) => r.row_id)).toEqual([11]);
+    expect(arg.pack.map((r) => r.row_id)).toEqual([12]);
+  });
+
+  it('applies one choice to all items', async () => {
+    const onConfirm = vi.fn();
+    render(RegenDiffModal, {
+      props: { open: true, added: [], updated: [], toBeRemoved: removed, onConfirm, onCancel: vi.fn() }
+    });
+    const applyAll = screen.getByText(strings.regen.apply_all).parentElement!;
+    await fireEvent.click(within(applyAll).getByRole('button', { name: strings.regen.choice_keep }));
+    await fireEvent.click(screen.getByRole('button', { name: strings.regen.confirm }));
+    const arg = onConfirm.mock.calls[0]![0] as OrphanDecisions;
+    expect(arg.keep.map((r) => r.row_id)).toEqual([11, 12]);
   });
 
   it('cancel button calls onCancel', async () => {

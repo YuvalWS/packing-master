@@ -16,6 +16,8 @@
     onCountChange: (next: number) => void;
     onToggleExpand?: () => void;
     onOpenMenu?: () => void;
+    /** Minus at count 1 deletes the row (DESIGN.md 14.2). */
+    onDelete?: () => void;
   }
 
   let {
@@ -28,7 +30,8 @@
     onToggleCheck,
     onCountChange,
     onToggleExpand,
-    onOpenMenu
+    onOpenMenu,
+    onDelete
   }: Props = $props();
 
   const checkLabel = $derived(
@@ -83,6 +86,7 @@
       min={1}
       disabled={stepperDisabled}
       onChange={onCountChange}
+      onBelowMin={onDelete}
     />
     {#if item.count_was_edited}
       <span class="edited-dot" aria-hidden="true"></span>

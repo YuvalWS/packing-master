@@ -9,9 +9,13 @@ export const RemoveItemKey = z.union([
 ]);
 export type RemoveItemKey = z.infer<typeof RemoveItemKey>;
 
+// For the items a settings change left behind (DESIGN.md 14.3): remove them, keep them as
+// manual items, or keep them as manual and checked ("mark packed").
 export const RegenerateRequest = z
   .object({
-    remove_item_keys: z.array(RemoveItemKey)
+    remove_item_keys: z.array(RemoveItemKey),
+    keep_item_keys: z.array(RemoveItemKey).optional(),
+    pack_item_keys: z.array(RemoveItemKey).optional()
   })
   .strict();
 export type RegenerateRequest = z.infer<typeof RegenerateRequest>;

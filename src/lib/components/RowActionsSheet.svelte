@@ -17,7 +17,7 @@
 
   let { item, knownBags, onSaveNote, onSaveSplit, onDelete, onClose }: Props = $props();
 
-  type View = 'menu' | 'bags' | 'note' | 'delete';
+  type View = 'menu' | 'bags' | 'note';
   let view = $state<View>('menu');
   let noteDraft = $state('');
   let splitDraft = $state<Record<string, number>>({});
@@ -111,14 +111,12 @@
             <span>{strings.row_menu.note}</span>
           </button>
         </li>
-        {#if item.is_manual}
-          <li>
-            <button type="button" class="menu-item danger" onclick={() => (view = 'delete')}>
-              <Trash2 size={20} />
-              <span>{strings.row_menu.delete}</span>
-            </button>
-          </li>
-        {/if}
+        <li>
+          <button type="button" class="menu-item danger" disabled={busy} onclick={confirmDelete}>
+            <Trash2 size={20} />
+            <span>{strings.row_menu.delete}</span>
+          </button>
+        </li>
       </ul>
     {:else if view === 'bags'}
       <div class="pane">
@@ -153,18 +151,6 @@
         <button type="button" class="submit" disabled={busy} onclick={saveNote}>
           {strings.common.save}
         </button>
-      </div>
-    {:else}
-      <div class="pane">
-        <p>{strings.row_menu.delete_confirm}</p>
-        <div class="confirm-row">
-          <button type="button" class="ghost" onclick={() => (view = 'menu')}>
-            {strings.common.cancel}
-          </button>
-          <button type="button" class="danger-btn" disabled={busy} onclick={confirmDelete}>
-            {strings.row_menu.delete}
-          </button>
-        </div>
       </div>
     {/if}
   {/if}
@@ -264,33 +250,8 @@
     cursor: default;
   }
 
-  .confirm-row {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-2);
-  }
 
-  .ghost {
-    padding: var(--space-2) var(--space-4);
-    border-radius: var(--radius-pill);
-    color: var(--color-text-muted);
-    cursor: pointer;
-  }
 
-  .ghost:hover {
-    background: var(--color-bg);
-    color: var(--color-text);
-  }
 
-  .danger-btn {
-    padding: var(--space-2) var(--space-4);
-    border-radius: var(--radius-pill);
-    background: var(--color-danger);
-    color: white;
-    cursor: pointer;
-  }
 
-  .danger-btn:hover:not(:disabled) {
-    background: #b91c1c;
-  }
 </style>

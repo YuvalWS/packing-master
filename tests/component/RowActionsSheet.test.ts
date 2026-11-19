@@ -43,22 +43,20 @@ describe('RowActionsSheet', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('menu shows split and note actions but hides delete for generated items', () => {
+  it('menu shows split, note and delete actions for generated items too', () => {
     render(RowActionsSheet, {
       props: { item: item({ is_manual: false }), knownBags: [], ...noopHandlers() }
     });
     expect(screen.getByText(strings.row_menu.split_bags)).toBeInTheDocument();
     expect(screen.getByText(strings.row_menu.note)).toBeInTheDocument();
-    expect(screen.queryByText(strings.row_menu.delete)).not.toBeInTheDocument();
+    expect(screen.getByText(strings.row_menu.delete)).toBeInTheDocument();
   });
 
-  it('delete action is offered for manual items and calls onDelete after confirm', async () => {
+  it('delete calls onDelete at once (the page offers Undo instead of a confirm step)', async () => {
     const handlers = noopHandlers();
     render(RowActionsSheet, {
-      props: { item: item({ is_manual: true }), knownBags: [], ...handlers }
+      props: { item: item({ is_manual: false }), knownBags: [], ...handlers }
     });
-    await fireEvent.click(screen.getByText(strings.row_menu.delete));
-    expect(screen.getByText(strings.row_menu.delete_confirm)).toBeInTheDocument();
     await fireEvent.click(screen.getByRole('button', { name: strings.row_menu.delete }));
     expect(handlers.onDelete).toHaveBeenCalledOnce();
   });

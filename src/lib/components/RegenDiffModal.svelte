@@ -4,7 +4,9 @@
   import type {
     PatchTripDiffAdded,
     PatchTripDiffUpdated,
-    PatchTripDiffRemoved
+    PatchTripDiffRemoved,
+    OrphanChoice,
+    OrphanDecisions
   } from '$lib/client/api.js';
   import strings from '$lib/strings.js';
 
@@ -13,7 +15,7 @@
     added: PatchTripDiffAdded[];
     updated: PatchTripDiffUpdated[];
     toBeRemoved: PatchTripDiffRemoved[];
-    onConfirm: (selectedRemovals: PatchTripDiffRemoved[]) => void;
+    onConfirm: (decisions: OrphanDecisions) => void;
     onCancel: () => void;
   }
 
@@ -21,25 +23,30 @@
 
   const checkedRemovalCount = $derived(toBeRemoved.filter((r) => r.is_checked).length);
 
-  // svelte-ignore state_referenced_locally
-  let selectedRowIds = $state<Set<number>>(new Set(toBeRemoved.map((r) => r.row_id ?? -1)));
+  // Per item that no longer fits: remove (default), keep, or keep and mark packed (DESIGN.md 14.3).
+  const CHOICES: OrphanChoice[] = ['remove', 'keep', 'pack'];
+  const label: Record<OrphanChoice, string> = {
+    remove: strings.regen.choice_remove,
+    keep: strings.regen.choice_keep,
+    pack: strings.regen.choice_pack
+  };
+  const keyOf = (r: PatchTripDiffRemoved) => (r.row_id !== null ? String(r.row_id) : `${r.item_id}|${r.person_id ?? ''}`);
+
+  let choices = $state<Record<string, OrphanChoice>>({});
 
   $effect(() => {
     if (open) {
-      selectedRowIds = new Set(toBeRemoved.map((r) => r.row_id ?? -1));
+      choices = Object.fromEntries(toBeRemoved.map((r) => [keyOf(r), 'remove' as OrphanChoice]));
     }
   });
 
-  function toggleRow(rowId: number) {
-    const next = new Set(selectedRowIds);
-    if (next.has(rowId)) next.delete(rowId);
-    else next.add(rowId);
-    selectedRowIds = next;
+  function setAll(choice: OrphanChoice) {
+    choices = Object.fromEntries(toBeRemoved.map((r) => [keyOf(r), choice]));
   }
 
   function confirm() {
-    const picks = toBeRemoved.filter((r) => r.row_id !== null && selectedRowIds.has(r.row_id));
-    onConfirm(picks);
+    const pick = (c: OrphanChoice) => toBeRemoved.filter((r) => (choices[keyOf(r)] ?? 'remove') === c);
+    onConfirm({ remove: pick('remove'), keep: pick('keep'), pack: pick('pack') });
   }
 </script>
 
@@ -82,25 +89,42 @@
     <section class="diff-section warn">
       <h3><AlertTriangle size={16} aria-hidden="true" /> {strings.regen.removed_heading}</h3>
       <ul>
-        {#each toBeRemoved as r (r.row_id ?? `${r.item_id}|${r.person_id ?? ''}`)}
-          {@const rowId = r.row_id ?? -1}
-          <li>
-            <label class="row-label">
-              <input
-                type="checkbox"
-                checked={rowId >= 0 && selectedRowIds.has(rowId)}
-                disabled={rowId < 0}
-                onchange={() => rowId >= 0 && toggleRow(rowId)}
-              />
+        {#each toBeRemoved as r (keyOf(r))}
+          {@const k = keyOf(r)}
+          <li class="orphan">
+            <div class="row-label">
               <span class="name">{r.display_name}{#if r.person_name}<span class="person"> · {r.person_name}</span>{/if}</span>
               {#if r.is_checked}
                 <span class="checked-tag">✓ {strings.regen.was_checked_tag}</span>
               {/if}
               <span class="count ltr-number">× {r.count}</span>
-            </label>
+            </div>
+            <div class="choices" role="radiogroup" aria-label={strings.regen.choice_group.replace('{name}', r.display_name)}>
+              {#each CHOICES as c (c)}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={choices[k] === c}
+                  class="choice"
+                  class:selected={choices[k] === c}
+                  data-choice={c}
+                  onclick={() => (choices = { ...choices, [k]: c })}
+                >
+                  {label[c]}
+                </button>
+              {/each}
+            </div>
           </li>
         {/each}
       </ul>
+      {#if toBeRemoved.length > 1}
+        <div class="apply-all">
+          <span>{strings.regen.apply_all}</span>
+          {#each CHOICES as c (c)}
+            <button type="button" class="choice" onclick={() => setAll(c)}>{label[c]}</button>
+          {/each}
+        </div>
+      {/if}
       {#if checkedRemovalCount > 0}
         <p class="checked-warning">
           {checkedRemovalCount === 1
@@ -115,7 +139,7 @@
     <button type="button" class="ghost" onclick={onCancel}>
       {strings.regen.cancel}
     </button>
-    <button type="button" class="danger" onclick={confirm} disabled={selectedRowIds.size === 0}>
+    <button type="button" class="danger" onclick={confirm}>
       {strings.regen.confirm}
     </button>
   {/snippet}
@@ -215,12 +239,46 @@
     background: #b91c1c;
   }
 
-  input[type='checkbox'] {
-    accent-color: var(--color-danger);
-  }
 
   .person {
     color: var(--color-text-muted);
     font-weight: 400;
+  }
+
+  .orphan {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding-block: var(--space-2);
+  }
+
+  .choices,
+  .apply-all {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .apply-all {
+    margin-block-start: var(--space-2);
+    color: var(--color-text-muted);
+    font-size: var(--fs-meta);
+  }
+
+  .choice {
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: var(--fs-meta);
+    cursor: pointer;
+  }
+
+  .choice.selected {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
   }
 </style>

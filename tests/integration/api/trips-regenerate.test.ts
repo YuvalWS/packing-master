@@ -68,6 +68,41 @@ describe('POST /api/trips/[id]/regenerate', () => {
     }
   });
 
+  it('keeps or marks packed the items that no longer fit, and never asks about them again', async () => {
+    const t = await createTrip(['accom_a', 'env_a', 'env_b']);
+    const narrow = async (parameters: string[]) =>
+      (await expectJson(
+        await tripPatch(
+          buildEvent(s.pool, { method: 'PATCH', params: { id: String(t.id) }, body: { parameters } })
+        )
+      )) as { diff: { to_be_removed: { row_id: number; item_id: string }[] } };
+    const first = await narrow(['accom_a']);
+    expect(first.diff.to_be_removed.length).toBeGreaterThanOrEqual(2);
+    const [keep, pack, ...rest] = first.diff.to_be_removed;
+
+    const res = await tripRegenerate(
+      buildEvent(s.pool, {
+        method: 'POST',
+        params: { id: String(t.id) },
+        body: {
+          remove_item_keys: rest.map((r) => ({ row_id: r.row_id })),
+          keep_item_keys: [{ row_id: keep!.row_id }],
+          pack_item_keys: [{ row_id: pack!.row_id }]
+        }
+      })
+    );
+    expect(await expectJson(res)).toMatchObject({ deleted: rest.length, kept: 1, packed: 1 });
+
+    const kept = await tripItemsQ.getByKey(s.pool, t.id, { rowId: keep!.row_id });
+    const packed = await tripItemsQ.getByKey(s.pool, t.id, { rowId: pack!.row_id });
+    expect(kept).toMatchObject({ is_manual: true, is_checked: false });
+    expect(packed).toMatchObject({ is_manual: true, is_checked: true });
+
+    // Kept items are the user's now: the next settings change does not list them.
+    const second = await narrow(['accom_a']);
+    expect(second.diff.to_be_removed).toEqual([]);
+  });
+
   it('refuses to remove a manual row and keeps it', async () => {
     const t = await createTrip(['accom_a']);
     const manual = await tripItemsQ.insertManualFreeText(s.pool, t.id, {
