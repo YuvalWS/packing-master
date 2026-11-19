@@ -1,5 +1,7 @@
 import mysql from 'mysql2/promise';
 import process from 'node:process';
+import type { TypeCast } from 'mysql2';
+import { isJsonColumnName } from './json-columns.js';
 
 export type PoolTarget = 'dev' | 'test';
 
@@ -27,9 +29,20 @@ function readConfig(target: PoolTarget): PoolConfig {
   };
 }
 
+const TEXT_TYPES = new Set(['BLOB', 'TINY_BLOB', 'MEDIUM_BLOB', 'LONG_BLOB', 'VAR_STRING', 'STRING']);
+
+const parseMariaJson: TypeCast = (field, next) => {
+  if (TEXT_TYPES.has(field.type) && isJsonColumnName(field.name)) {
+    const text = field.string('utf8');
+    return text === null ? null : JSON.parse(text);
+  }
+  return next();
+};
+
 export function createPool(target: PoolTarget): mysql.Pool {
   return mysql.createPool({
     ...readConfig(target),
+    typeCast: parseMariaJson,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
