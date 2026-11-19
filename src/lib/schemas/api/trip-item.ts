@@ -16,6 +16,8 @@ export type TripItemPatchRequest = z.infer<typeof TripItemPatchRequest>;
 export const TripItemAddCatalogRequest = z
   .object({
     item_id: ItemId,
+    // For a per-person item, whose row this is.
+    person_id: ItemId.optional(),
     count: z.number().int().positive().optional(),
     bag_distribution: z.record(z.unknown()).optional(),
     notes: z.string().optional()

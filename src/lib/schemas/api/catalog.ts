@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { ItemSchema, KitComponentSchema } from '../item.js';
+import { ItemSchema, ItemScope, KitComponentSchema } from '../item.js';
+import { PersonKind } from '../person.js';
 import { TemplateSchema } from '../template.js';
 import { ConditionSchema } from '../condition.js';
 import { QuantitySchema } from '../quantity.js';
@@ -20,7 +21,9 @@ export const ItemPatchRequest = z
     display_name: z.string().min(1).max(255),
     category: z.string().min(1).max(64).nullable(),
     default_bag: z.string().min(1).max(64).nullable(),
-    is_shared: z.boolean(),
+    per: ItemScope,
+    split: z.boolean(),
+    person_id: Id.nullable(),
     is_optional: z.boolean(),
     is_kit: z.boolean(),
     kit_contents: z.array(KitComponentSchema).nullable(),
@@ -79,7 +82,8 @@ export const PreviewRequest = z
     start_date: IsoDate.optional(),
     end_date: IsoDate.optional(),
     parameters: z.array(z.string().min(1)).optional(),
-    extras: z.record(z.unknown()).optional()
+    extras: z.record(z.unknown()).optional(),
+    travelers: z.array(Id).optional()
   })
   .strict()
   .refine((v) => (v.item_id === undefined) !== (v.item === undefined), {
@@ -91,5 +95,30 @@ export const PreviewRequest = z
         ? v.start_date === undefined && v.end_date === undefined && v.parameters === undefined
         : v.start_date !== undefined && v.end_date !== undefined && v.parameters !== undefined,
     { message: 'give trip_id, or start_date + end_date + parameters' }
-  );
+  )
+  .refine((v) => v.trip_id === undefined || v.travelers === undefined, {
+    message: 'travelers come from the trip when trip_id is given'
+  });
 export type PreviewRequest = z.infer<typeof PreviewRequest>;
+
+export const PersonCreateRequest = z
+  .object({
+    id: Id,
+    display_name: z.string().min(1).max(255),
+    kind: PersonKind,
+    sort_order: z.number().int().default(0)
+  })
+  .strict();
+export type PersonCreateRequest = z.infer<typeof PersonCreateRequest>;
+
+export const PersonPatchRequest = z
+  .object({
+    display_name: z.string().min(1).max(255),
+    kind: PersonKind,
+    sort_order: z.number().int(),
+    archived: z.boolean()
+  })
+  .partial()
+  .strict()
+  .refine(nonEmpty, { message: 'at least one field required' });
+export type PersonPatchRequest = z.infer<typeof PersonPatchRequest>;

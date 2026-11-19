@@ -2,6 +2,7 @@ import { ZodError } from 'zod';
 import { ApiError, throwSvelteError } from './errors.js';
 import { BackupError } from '$lib/server/backup.js';
 import { SystemError } from '$lib/server/system.js';
+import { AmbiguousItemKey } from '$lib/db/queries/trip-items.js';
 
 const STATUS: Record<string, number> = {
   invalid_backup_name: 400,
@@ -18,6 +19,9 @@ export async function withDomainErrors<T>(fn: () => Promise<T>): Promise<T> {
     return await fn();
   } catch (err) {
     if (err instanceof ApiError || err instanceof ZodError) throwSvelteError(err);
+    if (err instanceof AmbiguousItemKey) {
+      throwSvelteError(new ApiError(409, 'ambiguous_item_key', { row_ids: err.rowIds }));
+    }
     if (err instanceof BackupError || err instanceof SystemError) {
       throwSvelteError(
         new ApiError(STATUS[err.code] ?? 400, err.code, err.message !== err.code ? err.message : undefined)

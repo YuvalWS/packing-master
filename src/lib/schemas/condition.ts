@@ -12,6 +12,8 @@ import { z } from 'zod';
 //   { any_param: [ids...] }                  — any of the params active
 //   { all_params: [ids...] }                 — all of the params active
 //   { includes_shabbat: true }               — derived helper
+//   { person: "id" }                         — that person is travelling
+//   { kind: "baby" }                         — at least one traveler of that kind
 
 export type Condition =
   | true
@@ -23,7 +25,9 @@ export type Condition =
   | { gte: [string, number] }
   | { any_param: string[] }
   | { all_params: string[] }
-  | { includes_shabbat: true };
+  | { includes_shabbat: true }
+  | { person: string }
+  | { kind: 'adult' | 'kid' | 'baby' };
 
 export const ConditionSchema: z.ZodType<Condition> = z.lazy(() =>
   z.union([
@@ -40,6 +44,8 @@ export const ConditionSchema: z.ZodType<Condition> = z.lazy(() =>
     z.object({ gte: z.tuple([z.string().min(1), z.number()]) }).strict(),
     z.object({ any_param: z.array(z.string().min(1)) }).strict(),
     z.object({ all_params: z.array(z.string().min(1)) }).strict(),
-    z.object({ includes_shabbat: z.literal(true) }).strict()
+    z.object({ includes_shabbat: z.literal(true) }).strict(),
+    z.object({ person: z.string().min(1) }).strict(),
+    z.object({ kind: z.enum(['adult', 'kid', 'baby']) }).strict()
   ])
 );

@@ -6,7 +6,8 @@
     "trips": "טיולים",
     "items": "פריטים",
     "templates": "תבניות",
-    "system": "הגדרות מערכת"
+    "system": "הגדרות מערכת",
+    "people": "משפחה"
   },
   "a11y": {
     "open_menu": "פתח תפריט",
@@ -160,7 +161,6 @@
     "field_default_bag": "תיק ברירת מחדל",
     "field_kit": "ערכה",
     "field_optional": "רשות",
-    "field_shared": "משותף",
     "field_condition": "מתי כלול",
     "field_quantity": "כמות",
     "field_notes": "הערות",
@@ -168,7 +168,8 @@
     "back_to_list": "חזרה לרשימה",
     "not_found": "פריט לא נמצא",
     "yes": "כן",
-    "no": "לא"
+    "no": "לא",
+    "field_scope": "למי"
   },
   "templates_catalog": {
     "field_id": "מזהה",
@@ -188,7 +189,9 @@
     "all_of": "כל אלה: {ids}",
     "eq": "{path} = {value}",
     "gte": "{path} ≥ {value}",
-    "includes_shabbat": "כולל שבת"
+    "includes_shabbat": "כולל שבת",
+    "person": "{name} מגיע/ה",
+    "kind": "מגיע/ה {kind}"
   },
   "quantity": {
     "fixed": "{n} (קבוע)",
@@ -267,5 +270,45 @@
     "api_intro": "סוכן AI יכול לנהל את הטיולים דרך ה-API. תנו לו את הקישור למדריך:",
     "api_guide": "מדריך לסוכנים",
     "api_openapi": "הגדרת OpenAPI"
+  },
+  "travelers": {
+    "label": "מי מגיע?",
+    "hint": "פריטים אישיים נספרים לכל מי שמגיע",
+    "none_defined": "עוד לא הוגדרו בני משפחה.",
+    "manage": "ניהול המשפחה",
+    "error_none": "צריך לבחור לפחות אדם אחד"
+  },
+  "people": {
+    "title": "משפחה",
+    "intro": "בני המשפחה שיוצאים לטיולים. פריטים אישיים נספרים לכל מי שמגיע, ופריטים של מישהו מסוים מופיעים רק כשהוא מגיע.",
+    "add_heading": "הוספת בן משפחה",
+    "name": "שם",
+    "kind": "סוג",
+    "add": "הוסף",
+    "save": "שמור",
+    "edit": "ערוך",
+    "remove": "הסר",
+    "remove_confirm": "להסיר את {name}? בטיולים קודמים הוא יישאר.",
+    "added_toast": "נוסף",
+    "saved_toast": "נשמר",
+    "removed_toast": "הוסר",
+    "archived_toast": "הוסר מהרשימה; טיולים קודמים שומרים עליו",
+    "failed": "הפעולה נכשלה",
+    "empty": "עוד אין בני משפחה",
+    "kinds": {
+      "adult": "מבוגר",
+      "kid": "ילד",
+      "baby": "תינוק"
+    }
+  },
+  "scope": {
+    "family": "פעם אחת למשפחה",
+    "person": "לכל אחד",
+    "adult": "לכל מבוגר",
+    "kid": "לכל ילד",
+    "baby": "לכל תינוק",
+    "combined": "בשורה אחת",
+    "split": "שורה לכל אחד",
+    "for_person": "רק עבור {name}"
   }
 }

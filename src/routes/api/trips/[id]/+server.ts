@@ -5,6 +5,7 @@ import * as tripsQ from '$lib/db/queries/trips.js';
 import * as itemsQ from '$lib/db/queries/items.js';
 import * as tripItemsQ from '$lib/db/queries/trip-items.js';
 import * as kitQ from '$lib/db/queries/trip-kit-components.js';
+import * as peopleQ from '$lib/db/queries/people.js';
 import { withDomainErrors } from '$lib/api/domain-errors.js';
 import { applyRules } from '$lib/server/trip-rules.js';
 import { TripPatchRequest } from '$lib/schemas/api/trip.js';
@@ -12,6 +13,8 @@ import { TripPatchRequest } from '$lib/schemas/api/trip.js';
 interface EnrichedItem {
   row_id: number;
   item_id: string | null;
+  person_id: string | null;
+  person_name: string | null;
   display_name: string;
   category: string | null;
   default_bag: string | null;
@@ -31,10 +34,12 @@ export const GET: RequestHandler = async ({ locals, params }) => {
   const trip = await tripsQ.getById(locals.pool, tripId);
   if (!trip) throwSvelteError(new ApiError(404, 'trip_not_found'));
 
-  const [rows, kitComponents] = await Promise.all([
+  const [rows, kitComponents, people] = await Promise.all([
     tripItemsQ.listByTrip(locals.pool, tripId),
-    kitQ.listByTrip(locals.pool, tripId)
+    kitQ.listByTrip(locals.pool, tripId),
+    peopleQ.listAll(locals.pool, true)
   ]);
+  const names = new Map(people.map((p) => [p.id, p.display_name]));
 
   const catalogIds = [...new Set(rows.map((r) => r.item_id).filter((x): x is string => !!x))];
   const catalog = await Promise.all(catalogIds.map((id) => itemsQ.getById(locals.pool, id)));
@@ -45,6 +50,8 @@ export const GET: RequestHandler = async ({ locals, params }) => {
     return {
       row_id: r.id,
       item_id: r.item_id,
+      person_id: r.person_id || null,
+      person_name: r.person_id ? (names.get(r.person_id) ?? r.person_id) : null,
       display_name: cat?.display_name ?? r.display_name_override ?? '(unnamed)',
       category: cat?.category ?? null,
       default_bag: cat?.default_bag ?? null,

@@ -3,6 +3,7 @@ import { z } from 'zod';
 const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'must be YYYY-MM-DD');
 const ParamId = z.string().regex(/^[a-z][a-z0-9_]*$/);
 const TemplateId = z.string().regex(/^[a-z][a-z0-9_]*$/);
+const PersonId = z.string().regex(/^[a-z][a-z0-9_]*$/);
 
 export const TripCreateRequest = z
   .object({
@@ -13,7 +14,8 @@ export const TripCreateRequest = z
     destination: z.string().min(1).max(255).optional(),
     parameters: z.array(ParamId),
     extras: z.record(z.unknown()).optional(),
-    travelers: z.record(z.unknown()).optional()
+    // Person ids coming on the trip; omitted = everyone (DESIGN.md 13).
+    travelers: z.array(PersonId).optional()
   })
   .strict()
   .refine((v) => v.start_date <= v.end_date, {
@@ -31,7 +33,7 @@ export const TripPatchRequest = z
     destination: z.string().min(1).max(255).nullable().optional(),
     parameters: z.array(ParamId).optional(),
     extras: z.record(z.unknown()).optional(),
-    travelers: z.record(z.unknown()).nullable().optional()
+    travelers: z.array(PersonId).optional()
   })
   .strict()
   .refine((v) => Object.keys(v).length > 0, { message: 'at least one field required' })

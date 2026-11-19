@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { X, Backpack, Package, LayoutTemplate, Settings } from '@lucide/svelte';
+  import { X, Backpack, Package, LayoutTemplate, Settings, Users } from '@lucide/svelte';
   import { focusTrap } from '$lib/actions/focus-trap.js';
   import strings from '$lib/strings.js';
 
@@ -29,6 +29,7 @@
     { href: '/', label: strings.nav.trips, icon: Backpack },
     { href: '/items', label: strings.nav.items, icon: Package },
     { href: '/templates', label: strings.nav.templates, icon: LayoutTemplate },
+    { href: '/people', label: strings.nav.people, icon: Users },
     { href: '/system', label: strings.nav.system, icon: Settings }
   ];
 

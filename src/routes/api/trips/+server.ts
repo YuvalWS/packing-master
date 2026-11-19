@@ -1,5 +1,7 @@
 import type { RequestHandler } from './$types.js';
 import { ok, parseBody } from '$lib/api/json.js';
+import { withDomainErrors } from '$lib/api/domain-errors.js';
+import { defaultTravelers, requireTravelers, resolveTravelers } from '$lib/server/travelers.js';
 import { ApiError, throwSvelteError } from '$lib/api/errors.js';
 import * as tripsQ from '$lib/db/queries/trips.js';
 import * as itemsQ from '$lib/db/queries/items.js';
@@ -15,6 +17,10 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 export const POST: RequestHandler = async ({ locals, request }) => {
   const body = await parseBody(request, TripCreateRequest);
+  const travelerIds = await withDomainErrors(async () =>
+    body.travelers ? requireTravelers(locals.pool, body.travelers) : defaultTravelers(locals.pool)
+  );
+  const travelers = await resolveTravelers(locals.pool, travelerIds);
 
   const [items, parameters] = await Promise.all([
     itemsQ.listAll(locals.pool),
@@ -29,7 +35,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
       userParams: body.parameters,
       startISO: body.start_date,
       endISO: body.end_date,
-      extraContext: body.extras
+      extraContext: body.extras,
+      travelers
     });
   } catch (err) {
     throwSvelteError(
@@ -44,7 +51,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     end_date: body.end_date,
     destination: body.destination ?? null,
     context: { parameters: body.parameters, extras: body.extras },
-    travelers: body.travelers ?? null
+    travelers: travelerIds
   });
 
   await tripItemsQ.insertGeneratedAll(locals.pool, tripId, generated.items);

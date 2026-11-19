@@ -18,7 +18,13 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
     if (!(await itemsQ.existsById(locals.pool, body.item_id))) {
       throwSvelteError(new ApiError(404, 'item_not_found'));
     }
-    const existing = await tripItemsQ.getByKey(locals.pool, tripId, { itemId: body.item_id });
+    if (body.person_id && !(trip.travelers ?? []).includes(body.person_id)) {
+      throwSvelteError(new ApiError(400, 'person_not_on_trip'));
+    }
+    const existing = await tripItemsQ.getByKey(locals.pool, tripId, {
+      itemId: body.item_id,
+      personId: body.person_id ?? ''
+    });
     if (existing) {
       throwSvelteError(new ApiError(409, 'item_already_in_trip'));
     }

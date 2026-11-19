@@ -4,6 +4,7 @@
   import { formatCondition } from '$lib/util/format-condition.js';
   import { formatQuantity } from '$lib/util/format-quantity.js';
   import { bagLabel } from '$lib/util/bag-label.js';
+  import { formatScope } from '$lib/util/format-scope.js';
   import strings from '$lib/strings.js';
 
   interface Props {
@@ -39,8 +40,8 @@
     <dd>{item.is_optional ? strings.items_catalog.yes : strings.items_catalog.no}</dd>
   </div>
   <div class="field">
-    <dt>{strings.items_catalog.field_shared}</dt>
-    <dd>{item.is_shared ? strings.items_catalog.yes : strings.items_catalog.no}</dd>
+    <dt>{strings.items_catalog.field_scope}</dt>
+    <dd>{formatScope(item, data.names)}</dd>
   </div>
   <div class="field">
     <dt>{strings.items_catalog.field_kit}</dt>
@@ -48,7 +49,7 @@
   </div>
   <div class="field wide">
     <dt>{strings.items_catalog.field_condition}</dt>
-    <dd>{formatCondition(item.include_when)}</dd>
+    <dd>{formatCondition(item.include_when, data.names)}</dd>
   </div>
   <div class="field wide">
     <dt>{strings.items_catalog.field_quantity}</dt>

@@ -56,6 +56,7 @@ export interface CreateTripBody {
   destination?: string;
   parameters: string[];
   extras?: Record<string, unknown>;
+  travelers?: string[];
 }
 
 export interface CreateTripResponse {
@@ -73,6 +74,8 @@ export interface KitComponentDefinition {
 export interface EnrichedItem {
   row_id: number;
   item_id: string | null;
+  person_id?: string | null;
+  person_name?: string | null;
   display_name: string;
   category: string | null;
   default_bag: string | null;
@@ -90,6 +93,7 @@ export interface EnrichedItem {
 export interface KitComponentRow {
   trip_id: number;
   kit_item_id: string;
+  person_id: string;
   component_id: string;
   is_checked: boolean;
 }
@@ -114,16 +118,30 @@ export interface PatchTripBody {
   end_date?: string;
   destination?: string | null;
   parameters?: string[];
+  travelers?: string[];
   extras?: Record<string, unknown>;
 }
 
-export interface PatchTripDiffAdded {
+export interface PersonRef {
+  person_id?: string | null;
+  person_name?: string | null;
+}
+
+export interface Person {
+  id: string;
+  display_name: string;
+  kind: 'adult' | 'kid' | 'baby';
+  sort_order: number;
+  archived: boolean;
+}
+
+export interface PatchTripDiffAdded extends PersonRef {
   item_id: string;
   display_name: string;
   count: number;
 }
 
-export interface PatchTripDiffUpdated {
+export interface PatchTripDiffUpdated extends PersonRef {
   item_id: string;
   display_name: string;
   previous_count: number;
@@ -131,7 +149,7 @@ export interface PatchTripDiffUpdated {
   count_preserved: boolean;
 }
 
-export interface PatchTripDiffRemoved {
+export interface PatchTripDiffRemoved extends PersonRef {
   row_id: number | null;
   item_id: string;
   display_name: string;
@@ -202,6 +220,13 @@ export interface Api {
   addCatalogItem(tripId: number, body: AddCatalogItemBody): Promise<{ item: DbTripItemRow }>;
   addFreeTextItem(tripId: number, body: AddFreeTextItemBody): Promise<{ item: DbTripItemRow }>;
   listParameters(): Promise<{ parameters: Parameter[] }>;
+  listPeople(includeArchived?: boolean): Promise<{ people: Person[] }>;
+  createPerson(body: { id: string; display_name: string; kind: Person['kind']; sort_order?: number }): Promise<{ person: Person }>;
+  patchPerson(
+    id: string,
+    body: Partial<Pick<Person, 'display_name' | 'kind' | 'sort_order' | 'archived'>>
+  ): Promise<{ person: Person }>;
+  deletePerson(id: string): Promise<{ deleted?: true; archived?: true }>;
   listTemplates(): Promise<{ templates: Template[] }>;
   listItems(): Promise<{ items: Item[] }>;
   getItem(id: string): Promise<{ item: Item }>;
@@ -246,6 +271,17 @@ export function makeApi(fetcher: Fetcher = fetch): Api {
       request<{ item: DbTripItemRow }>(fetcher, 'POST', `/api/trips/${tripId}/items`, body),
     listParameters: () =>
       request<{ parameters: Parameter[] }>(fetcher, 'GET', '/api/parameters'),
+    listPeople: (includeArchived = false) =>
+      request<{ people: Person[] }>(
+        fetcher,
+        'GET',
+        `/api/people${includeArchived ? '?include_archived=1' : ''}`
+      ),
+    createPerson: (body) => request<{ person: Person }>(fetcher, 'POST', '/api/people', body),
+    patchPerson: (id, body) =>
+      request<{ person: Person }>(fetcher, 'PATCH', `/api/people/${encodeURIComponent(id)}`, body),
+    deletePerson: (id) =>
+      request<{ deleted?: true; archived?: true }>(fetcher, 'DELETE', `/api/people/${encodeURIComponent(id)}`),
     listTemplates: () =>
       request<{ templates: Template[] }>(fetcher, 'GET', '/api/templates'),
     listItems: () => request<{ items: Item[] }>(fetcher, 'GET', '/api/items'),

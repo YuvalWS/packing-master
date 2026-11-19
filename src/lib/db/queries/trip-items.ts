@@ -8,6 +8,8 @@ export interface DbTripItemRow {
   id: number;
   trip_id: number;
   item_id: string | null;
+  /** '' for a shared row; else the person the row is for (DESIGN.md 13). */
+  person_id: string;
   display_name_override: string | null;
   count: number;
   is_checked: boolean;
@@ -19,7 +21,17 @@ export interface DbTripItemRow {
   created_at: Date;
 }
 
-export type TripItemKey = { itemId: string } | { rowId: number };
+/**
+ * A row by numeric id, or by catalog item id (+ person). An item id without a person
+ * matches only when the item has a single row on the trip.
+ */
+export type TripItemKey = { itemId: string; personId?: string } | { rowId: number };
+
+export class AmbiguousItemKey extends Error {
+  constructor(readonly rowIds: number[]) {
+    super('ambiguous_item_key');
+  }
+}
 
 export interface TripItemPatch {
   count?: number;
@@ -30,6 +42,7 @@ export interface TripItemPatch {
 
 export interface ManualCatalogInput {
   item_id: string;
+  person_id?: string;
   count?: number;
   bag_distribution?: Record<string, unknown> | null;
   notes?: string | null;
@@ -47,6 +60,7 @@ function mapRow(r: RowDataPacket): DbTripItemRow {
     id: Number(r.id),
     trip_id: Number(r.trip_id),
     item_id: (r.item_id as string | null) ?? null,
+    person_id: (r.person_id as string | null) ?? '',
     display_name_override: (r.display_name_override as string | null) ?? null,
     count: Number(r.count),
     is_checked: Boolean(r.is_checked),
@@ -59,7 +73,7 @@ function mapRow(r: RowDataPacket): DbTripItemRow {
   };
 }
 
-const SELECT_COLS = `id, trip_id, item_id, display_name_override, count, is_checked, is_manual,
+const SELECT_COLS = `id, trip_id, item_id, person_id, display_name_override, count, is_checked, is_manual,
                      bag_distribution, notes, count_was_edited, rule_snapshot, created_at`;
 
 export async function listByTrip(pool: Pool, tripId: number): Promise<DbTripItemRow[]> {
@@ -77,29 +91,26 @@ async function insertGenerated(
 ): Promise<void> {
   await conn.execute(
     `INSERT INTO trip_items
-       (trip_id, item_id, count, is_manual, rule_snapshot)
-     VALUES (?, ?, ?, FALSE, ?)`,
-    [tripId, g.itemId, g.count, JSON.stringify(g.ruleSnapshot)]
+       (trip_id, item_id, person_id, count, is_manual, rule_snapshot)
+     VALUES (?, ?, ?, ?, FALSE, ?)`,
+    [tripId, g.itemId, g.personId, g.count, JSON.stringify(g.ruleSnapshot)]
   );
 }
 
 async function updateFromMerge(
   conn: PoolConnection,
   tripId: number,
-  itemId: string,
-  newCount: number,
-  countPreserved: boolean,
-  newRuleSnapshot: GeneratedItem['ruleSnapshot']
+  u: MergeDiff['updated'][number]
 ): Promise<void> {
-  if (countPreserved) {
+  if (u.countPreserved) {
     await conn.execute(
-      `UPDATE trip_items SET rule_snapshot = ? WHERE trip_id = ? AND item_id = ?`,
-      [JSON.stringify(newRuleSnapshot), tripId, itemId]
+      `UPDATE trip_items SET rule_snapshot = ? WHERE trip_id = ? AND item_id = ? AND person_id = ?`,
+      [JSON.stringify(u.newRuleSnapshot), tripId, u.itemId, u.personId]
     );
   } else {
     await conn.execute(
-      `UPDATE trip_items SET count = ?, rule_snapshot = ? WHERE trip_id = ? AND item_id = ?`,
-      [newCount, JSON.stringify(newRuleSnapshot), tripId, itemId]
+      `UPDATE trip_items SET count = ?, rule_snapshot = ? WHERE trip_id = ? AND item_id = ? AND person_id = ?`,
+      [u.newCount, JSON.stringify(u.newRuleSnapshot), tripId, u.itemId, u.personId]
     );
   }
 }
@@ -133,9 +144,7 @@ export async function applyDiff(
   try {
     await conn.beginTransaction();
     for (const g of diff.added) await insertGenerated(conn, tripId, g);
-    for (const u of diff.updated) {
-      await updateFromMerge(conn, tripId, u.itemId, u.newCount, u.countPreserved, u.newRuleSnapshot);
-    }
+    for (const u of diff.updated) await updateFromMerge(conn, tripId, u);
     await conn.commit();
   } catch (err) {
     await conn.rollback();
@@ -147,6 +156,8 @@ export async function applyDiff(
 
 export interface RemoveItem {
   itemId?: string;
+  /** With itemId: only that person's row. Without: every row of the item. */
+  personId?: string;
   rowId?: number;
 }
 
@@ -166,30 +177,32 @@ export async function removeAutoItems(
   try {
     await conn.beginTransaction();
     for (const key of keys) {
-      let row: RowDataPacket | undefined;
+      let rows: RowDataPacket[] = [];
       if (key.rowId != null) {
-        const [r] = await conn.query<RowDataPacket[]>(
+        [rows] = await conn.query<RowDataPacket[]>(
           'SELECT id, is_manual FROM trip_items WHERE trip_id = ? AND id = ?',
           [tripId, key.rowId]
         );
-        row = r[0];
       } else if (key.itemId) {
-        const [r] = await conn.query<RowDataPacket[]>(
-          'SELECT id, is_manual FROM trip_items WHERE trip_id = ? AND item_id = ?',
-          [tripId, key.itemId]
-        );
-        row = r[0];
+        [rows] =
+          key.personId !== undefined
+            ? await conn.query<RowDataPacket[]>(
+                'SELECT id, is_manual FROM trip_items WHERE trip_id = ? AND item_id = ? AND person_id = ?',
+                [tripId, key.itemId, key.personId]
+              )
+            : await conn.query<RowDataPacket[]>(
+                'SELECT id, is_manual FROM trip_items WHERE trip_id = ? AND item_id = ?',
+                [tripId, key.itemId]
+              );
       }
-      if (!row) continue;
-      if (row.is_manual) {
-        blockedManual++;
-        continue;
+      for (const row of rows) {
+        if (row.is_manual) {
+          blockedManual++;
+          continue;
+        }
+        const [res] = await conn.execute<ResultSetHeader>('DELETE FROM trip_items WHERE id = ?', [row.id]);
+        deleted += res.affectedRows;
       }
-      const [res] = await conn.execute<ResultSetHeader>(
-        'DELETE FROM trip_items WHERE id = ?',
-        [row.id]
-      );
-      deleted += res.affectedRows;
     }
     await conn.commit();
   } catch (err) {
@@ -206,16 +219,24 @@ async function findByKey(
   tripId: number,
   key: TripItemKey
 ): Promise<DbTripItemRow | null> {
-  const [rows] =
-    'itemId' in key
-      ? await conn.query<RowDataPacket[]>(
-          `SELECT ${SELECT_COLS} FROM trip_items WHERE trip_id = ? AND item_id = ?`,
-          [tripId, key.itemId]
-        )
-      : await conn.query<RowDataPacket[]>(
-          `SELECT ${SELECT_COLS} FROM trip_items WHERE trip_id = ? AND id = ?`,
-          [tripId, key.rowId]
-        );
+  let rows: RowDataPacket[];
+  if ('rowId' in key) {
+    [rows] = await conn.query<RowDataPacket[]>(
+      `SELECT ${SELECT_COLS} FROM trip_items WHERE trip_id = ? AND id = ?`,
+      [tripId, key.rowId]
+    );
+  } else if (key.personId !== undefined) {
+    [rows] = await conn.query<RowDataPacket[]>(
+      `SELECT ${SELECT_COLS} FROM trip_items WHERE trip_id = ? AND item_id = ? AND person_id = ?`,
+      [tripId, key.itemId, key.personId]
+    );
+  } else {
+    [rows] = await conn.query<RowDataPacket[]>(
+      `SELECT ${SELECT_COLS} FROM trip_items WHERE trip_id = ? AND item_id = ? ORDER BY id`,
+      [tripId, key.itemId]
+    );
+    if (rows.length > 1) throw new AmbiguousItemKey(rows.map((r) => Number(r.id)));
+  }
   return rows[0] ? mapRow(rows[0]) : null;
 }
 
@@ -233,6 +254,8 @@ export async function updateOne(
   key: TripItemKey,
   patch: TripItemPatch
 ): Promise<DbTripItemRow | null> {
+  const row = await findByKey(pool, tripId, key);
+  if (!row) return null;
   const sets: string[] = [];
   const args: (string | number | boolean | null)[] = [];
   if (patch.count !== undefined) {
@@ -252,22 +275,13 @@ export async function updateOne(
     sets.push('notes = ?');
     args.push(patch.notes);
   }
-  if (sets.length === 0) return getByKey(pool, tripId, key);
-
-  const whereArgs: (string | number)[] = [tripId];
-  let where: string;
-  if ('itemId' in key) {
-    where = 'trip_id = ? AND item_id = ?';
-    whereArgs.push(key.itemId);
-  } else {
-    where = 'trip_id = ? AND id = ?';
-    whereArgs.push(key.rowId);
+  if (sets.length > 0) {
+    await pool.execute<ResultSetHeader>(
+      `UPDATE trip_items SET ${sets.join(', ')} WHERE trip_id = ? AND id = ?`,
+      [...args, tripId, row.id]
+    );
   }
-  await pool.execute<ResultSetHeader>(
-    `UPDATE trip_items SET ${sets.join(', ')} WHERE ${where}`,
-    [...args, ...whereArgs]
-  );
-  return getByKey(pool, tripId, key);
+  return getByKey(pool, tripId, { rowId: row.id });
 }
 
 export async function insertManualCatalog(
@@ -277,11 +291,12 @@ export async function insertManualCatalog(
 ): Promise<DbTripItemRow | null> {
   const [res] = await pool.execute<ResultSetHeader>(
     `INSERT INTO trip_items
-       (trip_id, item_id, count, is_manual, bag_distribution, notes)
-     VALUES (?, ?, ?, TRUE, ?, ?)`,
+       (trip_id, item_id, person_id, count, is_manual, bag_distribution, notes)
+     VALUES (?, ?, ?, ?, TRUE, ?, ?)`,
     [
       tripId,
       input.item_id,
+      input.person_id ?? '',
       input.count ?? 1,
       input.bag_distribution ? JSON.stringify(input.bag_distribution) : null,
       input.notes ?? null

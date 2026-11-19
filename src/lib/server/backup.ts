@@ -10,6 +10,7 @@ import { isJsonColumn } from '../db/json-columns.js';
 // Parents before children, so a restore inserts in FK order.
 export const BACKUP_TABLES = [
   'parameters',
+  'people',
   'items',
   'templates',
   'trips',
@@ -35,13 +36,58 @@ export const Snapshot = z.object({
   app_version: z.string(),
   migrations: z.array(z.string()),
   tables: z.object(
-    Object.fromEntries(BACKUP_TABLES.map((t) => [t, z.array(Row)])) as Record<
+    // A table added after a backup was taken is simply empty in it.
+    Object.fromEntries(BACKUP_TABLES.map((t) => [t, z.array(Row).default([])])) as Record<
       BackupTable,
-      z.ZodArray<typeof Row>
+      z.ZodDefault<z.ZodArray<typeof Row>>
     >
   )
 });
 export type Snapshot = z.infer<typeof Snapshot>;
+
+/*
+ * Upgraders for backups taken before a breaking migration (CLAUDE.md workflow rule 9):
+ * each converts the rows the same way the migration converted the live tables, so an
+ * old backup always restores into the current schema.
+ */
+const UPGRADERS: { migration: string; upgrade: (t: Snapshot['tables']) => void }[] = [
+  {
+    // 0004_people.sql: items.is_shared -> per/split/person_id; personal items tied to `owner`.
+    migration: '0004_people.sql',
+    upgrade(t) {
+      const personal = t.items.some((i) => 'is_shared' in i && !i.is_shared);
+      if (personal && !t.people.some((p) => p.id === 'owner')) {
+        t.people.push({ id: 'owner', display_name: 'owner', kind: 'adult', sort_order: 0, archived_at: null });
+      }
+      const ownerItems = new Set<string>();
+      for (const i of t.items) {
+        if (!('is_shared' in i)) continue;
+        const shared = Boolean(i.is_shared);
+        delete i.is_shared;
+        i.per = shared ? 'family' : 'person';
+        i.split = 1;
+        i.person_id = shared ? null : 'owner';
+        if (!shared) ownerItems.add(String(i.id));
+      }
+      for (const r of t.trip_items) {
+        r.person_id ??= r.item_id !== null && ownerItems.has(String(r.item_id)) ? 'owner' : '';
+      }
+      for (const r of t.trip_kit_components) {
+        r.person_id ??= ownerItems.has(String(r.kit_item_id)) ? 'owner' : '';
+      }
+      if (personal) for (const trip of t.trips) trip.travelers ??= ['owner'];
+    }
+  }
+];
+
+export function upgradeSnapshot(s: Snapshot): Snapshot {
+  for (const u of UPGRADERS) {
+    if (s.migrations.includes(u.migration)) continue;
+    u.upgrade(s.tables);
+    s.migrations = [...s.migrations, u.migration].sort();
+  }
+  return s;
+}
 
 export interface BackupEntry {
   name: string;
@@ -263,7 +309,7 @@ export function decodeBackup(data: Buffer): Snapshot {
   }
   const parsed = Snapshot.safeParse(raw);
   if (!parsed.success) throw new BackupError('invalid_backup_file', parsed.error.issues[0]?.message);
-  return parsed.data;
+  return upgradeSnapshot(parsed.data);
 }
 
 export async function deleteBackup(name: string): Promise<void> {

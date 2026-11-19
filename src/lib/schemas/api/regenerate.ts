@@ -3,7 +3,8 @@ import { z } from 'zod';
 const ItemId = z.string().regex(/^[a-z][a-z0-9_]*$/);
 
 export const RemoveItemKey = z.union([
-  z.object({ item_id: ItemId }).strict(),
+  // Without person_id: every rule-generated row of the item.
+  z.object({ item_id: ItemId, person_id: z.string().optional() }).strict(),
   z.object({ row_id: z.number().int().positive() }).strict()
 ]);
 export type RemoveItemKey = z.infer<typeof RemoveItemKey>;

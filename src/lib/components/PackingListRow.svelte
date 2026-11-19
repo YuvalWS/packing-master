@@ -31,7 +31,12 @@
     onOpenMenu
   }: Props = $props();
 
-  const checkLabel = $derived(strings.a11y_row.toggle_check.replace('{name}', item.display_name));
+  const checkLabel = $derived(
+    strings.a11y_row.toggle_check.replace(
+      '{name}',
+      item.person_name ? `${item.display_name} (${item.person_name})` : item.display_name
+    )
+  );
 </script>
 
 <div class="row" class:checked={item.is_checked} class:optional={item.is_optional}>
@@ -55,6 +60,9 @@
   <div class="body">
     <div class="name-line">
       <span class="name">{item.display_name}</span>
+      {#if item.person_name}
+        <span class="tag tag-person">{item.person_name}</span>
+      {/if}
       {#if item.is_optional}
         <span class="tag tag-optional">{strings.packing_list.optional_tag}</span>
       {/if}
@@ -164,6 +172,11 @@
   .name {
     font-size: var(--fs-row);
     word-break: break-word;
+  }
+
+  .tag.tag-person {
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
   }
 
   .tag {

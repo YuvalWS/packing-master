@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { ChevronLeft } from '@lucide/svelte';
   import ParameterSelector from '$lib/components/ParameterSelector.svelte';
+  import TravelerSelector from '$lib/components/TravelerSelector.svelte';
   import { makeApi } from '$lib/client/api.js';
   import { derive, type DerivedTrip } from '$lib/rules/derived.js';
   import { formatDateRange } from '$lib/util/format-date.js';
@@ -21,6 +22,9 @@
   let endDate = $state('');
   let destination = $state('');
   let parameters = $state<string[]>([]);
+  // Everyone is coming unless toggled off (DESIGN.md 13).
+  // svelte-ignore state_referenced_locally
+  let travelers = $state<string[]>(data.people.map((p) => p.id));
   let submitting = $state(false);
   let errorMsg = $state<string | null>(null);
 
@@ -63,6 +67,7 @@
       (id) => accommodationParams.find((p) => p.id === id) !== undefined
     );
     if (!hasAccommodation) return strings.new_trip.error_no_accommodation;
+    if (data.people.length > 0 && travelers.length === 0) return strings.travelers.error_none;
     return null;
   }
 
@@ -78,7 +83,8 @@
         start_date: startDate,
         end_date: endDate,
         destination: destination.trim() || undefined,
-        parameters
+        parameters,
+        travelers: data.people.length > 0 ? travelers : undefined
       });
       await goto(`/trips/${res.trip.id}`);
     } catch (err) {
@@ -170,6 +176,8 @@
           placeholder={strings.new_trip.label_destination_placeholder}
         />
       </label>
+
+      <TravelerSelector people={data.people} selected={travelers} onChange={(next) => (travelers = next)} />
 
       <ParameterSelector
         parameters={data.parameters}

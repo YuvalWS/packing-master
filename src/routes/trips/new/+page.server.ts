@@ -3,12 +3,14 @@ import { makeApi } from '$lib/client/api.js';
 
 export const load: PageServerLoad = async ({ fetch }) => {
   const api = makeApi(fetch);
-  const [templates, parameters] = await Promise.all([
+  const [templates, parameters, people] = await Promise.all([
     api.listTemplates(),
-    api.listParameters()
+    api.listParameters(),
+    api.listPeople()
   ]);
   return {
     templates: templates.templates,
-    parameters: parameters.parameters
+    parameters: parameters.parameters,
+    people: people.people
   };
 };

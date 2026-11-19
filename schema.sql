@@ -15,12 +15,22 @@ CREATE TABLE IF NOT EXISTS parameters (
   INDEX idx_parameters_category (category)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS people (
+  id            VARCHAR(64)  NOT NULL PRIMARY KEY,
+  display_name  VARCHAR(255) NOT NULL,
+  kind          VARCHAR(16)  NOT NULL,
+  sort_order    INT          NOT NULL DEFAULT 0,
+  archived_at   TIMESTAMP    NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS items (
   id            VARCHAR(64)  NOT NULL PRIMARY KEY,
   display_name  VARCHAR(255) NOT NULL,
   category      VARCHAR(64)  NULL,
   default_bag   VARCHAR(64)  NULL,
-  is_shared     BOOLEAN      NOT NULL DEFAULT FALSE,
+  per           VARCHAR(16)  NOT NULL DEFAULT 'family',
+  split         BOOLEAN      NOT NULL DEFAULT TRUE,
+  person_id     VARCHAR(64)  NULL,
   is_optional   BOOLEAN      NOT NULL DEFAULT FALSE,
   is_kit        BOOLEAN      NOT NULL DEFAULT FALSE,
   kit_contents  JSON         NULL,
@@ -59,6 +69,7 @@ CREATE TABLE IF NOT EXISTS trip_items (
   id                     INT          AUTO_INCREMENT PRIMARY KEY,
   trip_id                INT          NOT NULL,
   item_id                VARCHAR(64)  NULL,
+  person_id              VARCHAR(64)  NOT NULL DEFAULT '',
   display_name_override  VARCHAR(255) NULL,
   count                  INT          NOT NULL,
   is_checked             BOOLEAN      NOT NULL DEFAULT FALSE,
@@ -70,17 +81,18 @@ CREATE TABLE IF NOT EXISTS trip_items (
   created_at             TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_trip_items_trip FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE,
   CONSTRAINT fk_trip_items_item FOREIGN KEY (item_id) REFERENCES items(id),
-  UNIQUE KEY uq_trip_item (trip_id, item_id)
+  UNIQUE KEY uq_trip_item_person (trip_id, item_id, person_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS trip_kit_components (
   id           INT AUTO_INCREMENT PRIMARY KEY,
   trip_id      INT          NOT NULL,
   kit_item_id  VARCHAR(64)  NOT NULL,
+  person_id    VARCHAR(64)  NOT NULL DEFAULT '',
   component_id VARCHAR(64)  NOT NULL,
   is_checked   BOOLEAN      NOT NULL DEFAULT FALSE,
   CONSTRAINT fk_trip_kit_trip FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE,
-  UNIQUE KEY uq_trip_kit_component (trip_id, kit_item_id, component_id)
+  UNIQUE KEY uq_trip_kit_component_person (trip_id, kit_item_id, person_id, component_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

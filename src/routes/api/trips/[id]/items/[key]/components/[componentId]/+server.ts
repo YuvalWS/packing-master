@@ -10,9 +10,11 @@ const IdSchema = z.string().regex(/^[a-z][a-z0-9_]*$/);
 
 export const POST: RequestHandler = async ({ locals, params }) => {
   const tripId = parseIntId(params.id);
-  // Kit endpoints address items by their catalog id only (kits never come
-  // from free-text rows). Numeric row ids are rejected here.
-  const itemId = parseRouteParam(params.key, IdSchema, 'invalid_item_id');
+  // Kits are addressed by catalog id (kits never come from free-text rows), plus
+  // :person_id for a per-person kit. Numeric row ids are rejected here.
+  const [rawItem, rawPerson] = (params.key ?? '').split(':');
+  const itemId = parseRouteParam(rawItem, IdSchema, 'invalid_item_id');
+  const personId = rawPerson === undefined ? '' : parseRouteParam(rawPerson, IdSchema, 'invalid_person_id');
   const componentId = parseRouteParam(params.componentId, IdSchema, 'invalid_component_id');
 
   const trip = await tripsQ.getById(locals.pool, tripId);
@@ -23,6 +25,6 @@ export const POST: RequestHandler = async ({ locals, params }) => {
   const known = item.kit_contents?.some((c) => c.id === componentId);
   if (!known) throwSvelteError(new ApiError(404, 'component_not_found'));
 
-  const row = await kitQ.toggleCheck(locals.pool, tripId, itemId, componentId);
+  const row = await kitQ.toggleCheck(locals.pool, tripId, itemId, personId, componentId);
   return ok({ component: row });
 };

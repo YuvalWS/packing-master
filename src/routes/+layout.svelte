@@ -22,6 +22,7 @@
     if (pathname.startsWith('/items')) return strings.nav.items;
     if (pathname.startsWith('/templates')) return strings.nav.templates;
     if (pathname.startsWith('/system')) return strings.nav.system;
+    if (pathname.startsWith('/people')) return strings.nav.people;
     return strings.app.title;
   }
 

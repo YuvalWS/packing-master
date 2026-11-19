@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { Trash2 } from '@lucide/svelte';
   import ParameterSelector from '$lib/components/ParameterSelector.svelte';
+  import TravelerSelector from '$lib/components/TravelerSelector.svelte';
   import RegenDiffModal from '$lib/components/RegenDiffModal.svelte';
   import Toast from '$lib/components/Toast.svelte';
   import type { PatchTripResponse, PatchTripDiffRemoved } from '$lib/client/api.js';
@@ -27,6 +28,8 @@
   let destination = $state(data.trip.destination ?? '');
   // svelte-ignore state_referenced_locally
   let parameters = $state<string[]>([...data.trip.context.parameters]);
+  // svelte-ignore state_referenced_locally
+  let travelers = $state<string[]>([...(data.trip.travelers ?? [])]);
 
   let submitting = $state(false);
   let toastMsg = $state<string | null>(null);
@@ -51,7 +54,8 @@
         start_date: startDate,
         end_date: endDate,
         destination: destination.trim() || null,
-        parameters
+        parameters,
+        ...(data.people.length > 0 && travelers.length > 0 ? { travelers } : {})
       });
       const added = res.diff.added.length;
       const updated = res.diff.updated.length;
@@ -175,6 +179,8 @@
         placeholder={strings.new_trip.label_destination_placeholder}
       />
     </label>
+
+    <TravelerSelector people={data.people} selected={travelers} onChange={(next) => (travelers = next)} />
 
     <ParameterSelector
       parameters={data.parameters}

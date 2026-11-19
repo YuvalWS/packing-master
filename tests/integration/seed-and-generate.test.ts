@@ -58,7 +58,7 @@ describe('integration: seed db_test then generate from it', () => {
       'SELECT id, display_name, category, is_singleton, is_derived, sort_order FROM parameters'
     );
     const [items] = await pool.query<RowDataPacket[]>(
-      `SELECT id, display_name, category, default_bag, is_shared, is_optional,
+      `SELECT id, display_name, category, default_bag, per, split, person_id, is_optional,
               is_kit, kit_contents, include_when, quantity, notes
          FROM items`
     );
@@ -76,7 +76,9 @@ describe('integration: seed db_test then generate from it', () => {
       display_name: i.display_name as string,
       category: (i.category as string | null) ?? undefined,
       default_bag: (i.default_bag as string | null) ?? undefined,
-      is_shared: Boolean(i.is_shared),
+      per: i.per,
+      split: Boolean(i.split),
+      person_id: (i.person_id as string | null) ?? undefined,
       is_optional: Boolean(i.is_optional),
       is_kit: Boolean(i.is_kit),
       kit_contents: i.kit_contents ?? undefined,

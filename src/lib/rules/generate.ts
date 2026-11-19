@@ -2,7 +2,7 @@ import type { Item } from '../schemas/item.js';
 import type { Parameter } from '../schemas/parameter.js';
 import type { Condition } from '../schemas/condition.js';
 import type { QuantityFormula } from '../schemas/quantity.js';
-import { evaluate } from './evaluator.js';
+import { evaluate, type Traveler } from './evaluator.js';
 import { computeQuantity } from './quantity.js';
 import { derive, type DerivedTrip } from './derived.js';
 
@@ -13,10 +13,17 @@ export interface GenerateInput {
   startISO: string;
   endISO: string;
   extraContext?: Record<string, unknown>;
+  /**
+   * Who is coming (DESIGN.md 13). Undefined = a trip without people: every item gets one
+   * shared row, as before people existed.
+   */
+  travelers?: readonly Traveler[];
 }
 
 export interface GeneratedItem {
   itemId: string;
+  /** '' for a shared row, else the person the row is for. */
+  personId: string;
   count: number;
   ruleSnapshot: {
     include_when: Condition;
@@ -51,6 +58,22 @@ function validateSingletons(parameters: Parameter[], active: ReadonlySet<string>
   }
 }
 
+/** The rows an included item produces, and how many times its count each one carries. */
+export function rowsFor(
+  item: Pick<Item, 'per' | 'split' | 'person_id'>,
+  travelers: readonly Traveler[] | undefined
+): { personId: string; times: number }[] {
+  if (!travelers) return [{ personId: '', times: 1 }];
+  if (item.person_id) {
+    return travelers.some((t) => t.id === item.person_id) ? [{ personId: item.person_id, times: 1 }] : [];
+  }
+  if (item.per === 'family') return [{ personId: '', times: 1 }];
+  const matching = item.per === 'person' ? travelers : travelers.filter((t) => t.kind === item.per);
+  if (matching.length === 0) return [];
+  if (!item.split) return [{ personId: '', times: matching.length }];
+  return matching.map((t) => ({ personId: t.id, times: 1 }));
+}
+
 export function generate(input: GenerateInput): GenerateResult {
   const derived = derive(input.startISO, input.endISO);
   const active = new Set<string>([...input.userParams, ...derived.derivedParamIds]);
@@ -62,8 +85,10 @@ export function generate(input: GenerateInput): GenerateResult {
     weekdays: derived.weekdays,
     shabbatCount: derived.shabbatCount
   };
+  const travelers = input.travelers;
 
   const evalCtx = {
+    travelers,
     activeParams: active,
     params: {
       days: derived.days,
@@ -79,14 +104,10 @@ export function generate(input: GenerateInput): GenerateResult {
     if (!evaluate(item.include_when, evalCtx)) continue;
     const count = computeQuantity(item.quantity, quantityCtx);
     if (count <= 0) continue;
-    out.push({
-      itemId: item.id,
-      count,
-      ruleSnapshot: {
-        include_when: item.include_when,
-        quantity: item.quantity
-      }
-    });
+    const ruleSnapshot = { include_when: item.include_when, quantity: item.quantity };
+    for (const row of rowsFor(item, travelers)) {
+      out.push({ itemId: item.id, personId: row.personId, count: count * row.times, ruleSnapshot });
+    }
   }
 
   return {

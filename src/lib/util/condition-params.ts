@@ -36,3 +36,17 @@ function collect(cond: Condition, out: Set<string>): void {
     return;
   }
 }
+
+/** Every person id a condition references through {person: id}. */
+export function conditionPersonIds(cond: Condition): string[] {
+  const out = new Set<string>();
+  const walk = (c: Condition): void => {
+    if (c === true || typeof c === 'string') return;
+    if ('and' in c) c.and.forEach(walk);
+    else if ('or' in c) c.or.forEach(walk);
+    else if ('not' in c) walk(c.not);
+    else if ('person' in c) out.add(c.person);
+  };
+  walk(cond);
+  return [...out];
+}

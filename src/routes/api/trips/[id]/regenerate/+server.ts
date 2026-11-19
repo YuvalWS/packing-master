@@ -13,7 +13,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
   if (!trip) throwSvelteError(new ApiError(404, 'trip_not_found'));
 
   const keys = body.remove_item_keys.map((k) =>
-    'item_id' in k ? { itemId: k.item_id } : { rowId: k.row_id }
+    'item_id' in k ? { itemId: k.item_id, personId: k.person_id } : { rowId: k.row_id }
   );
 
   const result = await tripItemsQ.removeAutoItems(locals.pool, tripId, keys);

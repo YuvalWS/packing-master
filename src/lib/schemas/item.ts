@@ -17,13 +17,20 @@ export const KitComponentSchema = z
   .strict();
 export type KitComponent = z.infer<typeof KitComponentSchema>;
 
+export const ItemScope = z.enum(['family', 'person', 'adult', 'kid', 'baby']);
+export type ItemScope = z.infer<typeof ItemScope>;
+
 export const ItemObject = z
   .object({
     id: IdSchema,
     display_name: z.string().min(1).max(255),
     category: z.string().min(1).max(64).optional(),
     default_bag: z.string().min(1).max(64).optional(),
-    is_shared: z.boolean().default(false),
+    // Who the quantity is for (DESIGN.md 13): once per family, or for every traveler
+    // of a kind; split = one row per traveler instead of one summed row.
+    per: ItemScope.default('family'),
+    split: z.boolean().default(true),
+    person_id: IdSchema.optional(),
     is_optional: z.boolean().default(false),
     is_kit: z.boolean().default(false),
     kit_contents: z.array(KitComponentSchema).optional(),

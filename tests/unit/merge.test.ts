@@ -4,6 +4,7 @@ import type { GeneratedItem } from '../../src/lib/rules/generate.js';
 
 const gi = (itemId: string, count: number): GeneratedItem => ({
   itemId,
+  personId: '',
   count,
   ruleSnapshot: { include_when: true, quantity: { fixed: count } }
 });
@@ -14,6 +15,7 @@ const row = (
   opts: Partial<TripItemRow> = {}
 ): TripItemRow => ({
   itemId,
+  personId: '',
   count,
   isManual: false,
   countWasEdited: false,

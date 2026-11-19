@@ -56,11 +56,13 @@ describe('queries/trips', () => {
     await tripItemsQ.insertGeneratedAll(s.pool, id, [
       {
         itemId: 'item_always',
+        personId: '',
         count: 1,
         ruleSnapshot: { include_when: true, quantity: { fixed: 1 } }
       },
       {
         itemId: 'item_per_day',
+        personId: '',
         count: 3,
         ruleSnapshot: { include_when: true, quantity: { per_day: 1 } }
       }

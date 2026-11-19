@@ -1,8 +1,15 @@
 import type { Condition } from '../schemas/condition.js';
 
+export interface Traveler {
+  id: string;
+  kind: 'adult' | 'kid' | 'baby';
+}
+
 export interface EvalContext {
   activeParams: ReadonlySet<string>;
   params: Readonly<Record<string, unknown>>;
+  /** Who is coming; undefined for trips without people (person/kind are then false). */
+  travelers?: readonly Traveler[];
 }
 
 function readPath(obj: Record<string, unknown>, path: string): unknown {
@@ -58,6 +65,14 @@ export function evaluate(condition: Condition, ctx: EvalContext): boolean {
 
   if ('includes_shabbat' in condition) {
     return ctx.activeParams.has('derived_has_shabbat');
+  }
+
+  if ('person' in condition) {
+    return ctx.travelers?.some((t) => t.id === condition.person) ?? false;
+  }
+
+  if ('kind' in condition) {
+    return ctx.travelers?.some((t) => t.kind === condition.kind) ?? false;
   }
 
   // Exhaustiveness guard: TypeScript can't see the path with `in`-narrowing

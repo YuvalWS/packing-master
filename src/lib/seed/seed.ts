@@ -9,6 +9,7 @@ export async function seedCatalog(pool: Pool, catalog: Catalog): Promise<void> {
     await conn.query('TRUNCATE TABLE templates');
     await conn.query('TRUNCATE TABLE items');
     await conn.query('TRUNCATE TABLE parameters');
+    await conn.query('TRUNCATE TABLE people');
     await conn.query('SET FOREIGN_KEY_CHECKS = 1');
 
     for (const p of catalog.parameters) {
@@ -18,18 +19,27 @@ export async function seedCatalog(pool: Pool, catalog: Catalog): Promise<void> {
       );
     }
 
+    for (const p of catalog.people) {
+      await conn.execute(
+        'INSERT INTO people (id, display_name, kind, sort_order) VALUES (?, ?, ?, ?)',
+        [p.id, p.display_name, p.kind, p.sort_order]
+      );
+    }
+
     for (const i of catalog.items) {
       await conn.execute(
         `INSERT INTO items
-          (id, display_name, category, default_bag, is_shared, is_optional, is_kit,
+          (id, display_name, category, default_bag, per, split, person_id, is_optional, is_kit,
            kit_contents, include_when, quantity, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           i.id,
           i.display_name,
           i.category ?? null,
           i.default_bag ?? null,
-          i.is_shared,
+          i.per,
+          i.split,
+          i.person_id ?? null,
           i.is_optional,
           i.is_kit,
           i.kit_contents ? JSON.stringify(i.kit_contents) : null,

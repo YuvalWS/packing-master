@@ -4,11 +4,15 @@ import yaml from 'js-yaml';
 import { ParametersFileSchema, type Parameter } from '../schemas/parameter.js';
 import { ItemsFileSchema, type Item } from '../schemas/item.js';
 import { TemplatesFileSchema, type Template } from '../schemas/template.js';
+import { PeopleFileSchema, type Person } from '../schemas/person.js';
+import { existsSync } from 'node:fs';
 
 export interface Catalog {
   parameters: Parameter[];
   items: Item[];
   templates: Template[];
+  /** Optional people.yaml (DESIGN.md 13); person-tied items need their people. */
+  people: Person[];
 }
 
 async function loadYaml<T>(file: string): Promise<unknown> {
@@ -27,5 +31,10 @@ export async function loadCatalog(dir: string): Promise<Catalog> {
   const items = ItemsFileSchema.parse(itemsRaw).items;
   const templates = TemplatesFileSchema.parse(templatesRaw).templates;
 
-  return { parameters, items, templates };
+  const peopleFile = path.join(dir, 'people.yaml');
+  const people = existsSync(peopleFile)
+    ? PeopleFileSchema.parse(await loadYaml(peopleFile)).people
+    : [];
+
+  return { parameters, items, templates, people };
 }

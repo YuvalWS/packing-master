@@ -48,9 +48,9 @@
     <section class="diff-section">
       <h3><Plus size={16} aria-hidden="true" /> {strings.regen.added_heading}</h3>
       <ul>
-        {#each added as a (a.item_id)}
+        {#each added as a (`${a.item_id}|${a.person_id ?? ''}`)}
           <li>
-            <span class="name">{a.display_name}</span>
+            <span class="name">{a.display_name}{#if a.person_name}<span class="person"> · {a.person_name}</span>{/if}</span>
             <span class="count ltr-number">× {a.count}</span>
           </li>
         {/each}
@@ -62,9 +62,9 @@
     <section class="diff-section">
       <h3><RefreshCw size={16} aria-hidden="true" /> {strings.regen.updated_heading}</h3>
       <ul>
-        {#each updated as u (u.item_id)}
+        {#each updated as u (`${u.item_id}|${u.person_id ?? ''}`)}
           <li>
-            <span class="name">{u.display_name}</span>
+            <span class="name">{u.display_name}{#if u.person_name}<span class="person"> · {u.person_name}</span>{/if}</span>
             {#if u.count_preserved}
               <span class="note">{strings.regen.count_preserved_note.replace('{count}', String(u.new_count))}</span>
             {:else if u.previous_count !== u.new_count}
@@ -82,7 +82,7 @@
     <section class="diff-section warn">
       <h3><AlertTriangle size={16} aria-hidden="true" /> {strings.regen.removed_heading}</h3>
       <ul>
-        {#each toBeRemoved as r (r.row_id ?? r.item_id)}
+        {#each toBeRemoved as r (r.row_id ?? `${r.item_id}|${r.person_id ?? ''}`)}
           {@const rowId = r.row_id ?? -1}
           <li>
             <label class="row-label">
@@ -92,7 +92,7 @@
                 disabled={rowId < 0}
                 onchange={() => rowId >= 0 && toggleRow(rowId)}
               />
-              <span class="name">{r.display_name}</span>
+              <span class="name">{r.display_name}{#if r.person_name}<span class="person"> · {r.person_name}</span>{/if}</span>
               {#if r.is_checked}
                 <span class="checked-tag">✓ {strings.regen.was_checked_tag}</span>
               {/if}
@@ -217,5 +217,10 @@
 
   input[type='checkbox'] {
     accent-color: var(--color-danger);
+  }
+
+  .person {
+    color: var(--color-text-muted);
+    font-weight: 400;
   }
 </style>

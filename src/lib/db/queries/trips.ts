@@ -13,7 +13,8 @@ export interface TripRow {
   end_date: string;
   destination: string | null;
   context: TripContext;
-  travelers: Record<string, unknown> | null;
+  /** Person ids coming on the trip; null for trips without people (DESIGN.md 13). */
+  travelers: string[] | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -30,7 +31,7 @@ export interface TripCreateInput {
   end_date: string;
   destination?: string | null;
   context: TripContext;
-  travelers?: Record<string, unknown> | null;
+  travelers?: string[] | null;
 }
 
 export interface TripPatchInput {
@@ -40,7 +41,7 @@ export interface TripPatchInput {
   end_date?: string;
   destination?: string | null;
   context?: TripContext;
-  travelers?: Record<string, unknown> | null;
+  travelers?: string[] | null;
 }
 
 function toISODate(v: unknown): string {
@@ -62,7 +63,7 @@ function mapRow(r: RowDataPacket): TripRow {
     end_date: toISODate(r.end_date),
     destination: (r.destination as string | null) ?? null,
     context: r.context as TripContext,
-    travelers: (r.travelers as Record<string, unknown> | null) ?? null,
+    travelers: Array.isArray(r.travelers) ? (r.travelers as string[]) : null,
     created_at: r.created_at as Date,
     updated_at: r.updated_at as Date
   };

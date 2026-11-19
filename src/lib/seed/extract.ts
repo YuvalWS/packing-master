@@ -440,7 +440,8 @@ export function renderItemsYaml(items: DraftItem[]): string {
     if (item.category) lines.push(`    category: ${scalar(item.category)}`);
     if (item.default_bag) lines.push(`    default_bag: ${item.default_bag}`);
     if (item.is_optional) lines.push('    is_optional: true');
-    if (item.is_shared) lines.push('    is_shared: true');
+    // Shared items keep the default scope (once per family); the rest are per person.
+    if (!item.is_shared) lines.push('    per: person');
     if (item.is_kit) {
       lines.push('    is_kit: true');
       lines.push('    kit_contents:');

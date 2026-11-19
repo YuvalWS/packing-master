@@ -30,8 +30,15 @@ function connConfig(target: Target): ConnConfig {
   };
 }
 
-export async function runMigrations(target: Target): Promise<void> {
-  const cfg = connConfig(target);
+export interface MigrateOptions {
+  /** Another database on the same server (tests of a migration against legacy data). */
+  database?: string;
+  /** Stop after this migration file, inclusive. */
+  to?: string;
+}
+
+export async function runMigrations(target: Target, opts: MigrateOptions = {}): Promise<void> {
+  const cfg = { ...connConfig(target), ...(opts.database ? { database: opts.database } : {}) };
   const connection = await mysql.createConnection({
     ...cfg,
     multipleStatements: true
@@ -75,7 +82,7 @@ export async function runMigrations(target: Target): Promise<void> {
     logger: console
   });
 
-  await umzug.up();
+  await (opts.to ? umzug.up({ to: opts.to }) : umzug.up());
   await connection.end();
 }
 

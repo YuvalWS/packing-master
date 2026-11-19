@@ -77,21 +77,26 @@
     kitComponents = data.kitComponents;
   });
 
-  function kitState(itemId: string) {
-    const checks = kitComponents.filter((c) => c.kit_item_id === itemId);
-    return checks;
+  // A kit row is addressed as item_id, or item_id:person_id for a per-person kit.
+  const kitKey = (item: EnrichedItem) =>
+    item.person_id ? `${item.item_id ?? ''}:${item.person_id}` : (item.item_id ?? '');
+  const compKey = (c: KitComponentRowState) =>
+    c.person_id ? `${c.kit_item_id}:${c.person_id}` : c.kit_item_id;
+
+  function kitState(key: string) {
+    return kitComponents.filter((c) => compKey(c) === key);
   }
 
   function kitPartial(item: EnrichedItem): boolean {
     if (!item.is_kit || !item.kit_contents) return false;
-    const states = kitState(item.item_id ?? '');
+    const states = kitState(kitKey(item));
     const checkedCount = states.filter((s) => s.is_checked).length;
     return checkedCount > 0 && checkedCount < item.kit_contents.length;
   }
 
-  function isComponentChecked(itemId: string, componentId: string): boolean {
+  function isComponentChecked(key: string, componentId: string): boolean {
     return kitComponents.some(
-      (c) => c.kit_item_id === itemId && c.component_id === componentId && c.is_checked
+      (c) => compKey(c) === key && c.component_id === componentId && c.is_checked
     );
   }
 
@@ -210,7 +215,7 @@
     items = items.map((it) => (it.row_id === item.row_id ? { ...item } : it));
     try {
       const api = makeApi();
-      const key = item.item_id ?? item.row_id;
+      const key = item.row_id;
       await api.patchTripItem(data.trip.id, key, patch);
       await invalidate(`trip:${data.trip.id}`);
     } catch {
@@ -221,7 +226,7 @@
   }
 
   function itemKey(item: EnrichedItem): string | number {
-    return item.item_id ?? item.row_id;
+    return item.row_id;
   }
 
   let tripDeleteArmed = $state(false);
@@ -306,7 +311,7 @@
     next: boolean
   ): KitComponentRowState[] {
     const idx = current.findIndex(
-      (c) => c.kit_item_id === itemId && c.component_id === componentId
+      (c) => compKey(c) === itemId && c.component_id === componentId
     );
     if (idx >= 0) {
       const copy = current.slice();
@@ -315,7 +320,13 @@
     }
     return [
       ...current,
-      { trip_id: data.trip.id, kit_item_id: itemId, component_id: componentId, is_checked: next }
+      {
+        trip_id: data.trip.id,
+        kit_item_id: itemId.split(':')[0]!,
+        person_id: itemId.split(':')[1] ?? '',
+        component_id: componentId,
+        is_checked: next
+      }
     ];
   }
 </script>
@@ -438,8 +449,8 @@
                   <KitComponentRow
                     componentId={comp.id}
                     displayName={comp.display_name}
-                    isChecked={isComponentChecked(item.item_id ?? '', comp.id)}
-                    onToggle={() => toggleComponent(item.item_id ?? '', comp.id)}
+                    isChecked={isComponentChecked(kitKey(item), comp.id)}
+                    onToggle={() => toggleComponent(kitKey(item), comp.id)}
                   />
                 </li>
               {/each}

@@ -10,7 +10,11 @@ import type {
   PreviewRequest,
   TemplatePatchRequest
 } from '$lib/schemas/api/catalog.js';
-import { conditionParamIds } from '$lib/util/condition-params.js';
+import { conditionParamIds, conditionPersonIds } from '$lib/util/condition-params.js';
+import * as peopleQ from '$lib/db/queries/people.js';
+import type { Person } from '$lib/schemas/person.js';
+import type { PersonCreateRequest, PersonPatchRequest } from '$lib/schemas/api/catalog.js';
+import { requireTravelers, resolveTravelers } from './travelers.js';
 import * as itemsQ from '$lib/db/queries/items.js';
 import * as parametersQ from '$lib/db/queries/parameters.js';
 import * as templatesQ from '$lib/db/queries/templates.js';
@@ -32,6 +36,14 @@ async function requireKnownParameters(pool: Pool, ids: string[], forTemplate: bo
   }
 }
 
+async function requireKnownPeople(pool: Pool, item: Item) {
+  const ids = [...conditionPersonIds(item.include_when), ...(item.person_id ? [item.person_id] : [])];
+  if (ids.length === 0) return;
+  const known = new Set((await peopleQ.listAll(pool, true)).map((p) => p.id));
+  const unknown = ids.filter((id) => !known.has(id));
+  if (unknown.length > 0) throw new ApiError(400, 'unknown_person', { ids: unknown });
+}
+
 function validateItem(raw: unknown): Item {
   const parsed = ItemSchema.safeParse(raw);
   if (!parsed.success) throw parsed.error;
@@ -41,6 +53,7 @@ function validateItem(raw: unknown): Item {
 export async function createItem(pool: Pool, item: Item): Promise<itemsQ.CatalogItem> {
   if (await itemsQ.getCatalogItem(pool, item.id)) throw new ApiError(409, 'item_exists');
   await requireKnownParameters(pool, conditionParamIds(item.include_when), false);
+  await requireKnownPeople(pool, item);
   await itemsQ.insert(pool, item);
   return (await itemsQ.getCatalogItem(pool, item.id))!;
 }
@@ -64,6 +77,7 @@ export async function updateItem(
   if (patch.include_when !== undefined) {
     await requireKnownParameters(pool, conditionParamIds(next.include_when), false);
   }
+  if (patch.include_when !== undefined || patch.person_id) await requireKnownPeople(pool, next);
   await itemsQ.replace(pool, next, archived ?? wasArchived);
   return (await itemsQ.getCatalogItem(pool, id))!;
 }
@@ -178,12 +192,14 @@ export async function preview(pool: Pool, req: PreviewRequest) {
   if (req.item) {
     item = req.item;
     await requireKnownParameters(pool, conditionParamIds(item.include_when), false);
+    await requireKnownPeople(pool, item);
   } else {
     const found = await itemsQ.getById(pool, req.item_id!);
     if (!found) throw new ApiError(404, 'item_not_found');
     item = found;
   }
   let start: string, end: string, params: string[], extras: Record<string, unknown> | undefined;
+  let travelerIds: string[] | null;
   if (req.trip_id !== undefined) {
     const trip = await tripsQ.getById(pool, req.trip_id);
     if (!trip) throw new ApiError(404, 'trip_not_found');
@@ -191,25 +207,41 @@ export async function preview(pool: Pool, req: PreviewRequest) {
     end = trip.end_date;
     params = trip.context.parameters;
     extras = trip.context.extras;
+    travelerIds = trip.travelers;
   } else {
     start = req.start_date!;
     end = req.end_date!;
     params = req.parameters!;
     extras = req.extras;
+    travelerIds = req.travelers
+      ? await requireTravelers(pool, req.travelers)
+      : (await peopleQ.listAll(pool)).map((p) => p.id);
+    if (travelerIds.length === 0 && !req.travelers) travelerIds = null;
   }
+  const travelers = await resolveTravelers(pool, travelerIds);
   if (end < start) throw new ApiError(400, 'invalid_dates');
   const parameters = await parametersQ.listAll(pool);
   let result;
   try {
-    result = generate({ items: [item], parameters, userParams: params, startISO: start, endISO: end, extraContext: extras });
+    result = generate({
+      items: [item],
+      parameters,
+      userParams: params,
+      startISO: start,
+      endISO: end,
+      extraContext: extras,
+      travelers
+    });
   } catch (err) {
     throw new ApiError(400, 'generate_failed', err instanceof Error ? err.message : String(err));
   }
-  const hit = result.items.find((g) => g.itemId === item.id);
+  const rows = result.items.filter((g) => g.itemId === item.id);
   const d = derive(start, end);
   return {
-    included: hit !== undefined,
-    count: hit?.count ?? 0,
+    included: rows.length > 0,
+    count: rows.reduce((n, r) => n + r.count, 0),
+    rows: rows.map((r) => ({ person_id: r.personId || null, count: r.count })),
+    travelers: travelerIds,
     active_parameters: result.activeParams,
     derived: {
       days: d.days,
@@ -224,10 +256,70 @@ export async function preview(pool: Pool, req: PreviewRequest) {
 }
 
 export async function exportCatalog(pool: Pool) {
-  const [parameters, items, templates] = await Promise.all([
+  const [parameters, items, templates, people] = await Promise.all([
     parametersQ.listAll(pool),
     itemsQ.listAll(pool),
-    templatesQ.listAll(pool)
+    templatesQ.listAll(pool),
+    peopleQ.listAll(pool)
   ]);
-  return { parameters, items, templates };
+  return {
+    parameters,
+    items,
+    templates,
+    people: people.map(({ archived: _a, ...p }) => p)
+  };
+}
+
+// ---- people (DESIGN.md 13) -----------------------------------------------------------
+
+export interface PersonUsage {
+  items: string[];
+  trips: number[];
+}
+
+export async function personUsage(pool: Pool, id: string): Promise<PersonUsage> {
+  const [items, trips] = await Promise.all([itemsQ.listCatalog(pool, true), tripsQ.listAll(pool)]);
+  return {
+    items: items
+      .filter((i) => i.person_id === id || conditionPersonIds(i.include_when).includes(id))
+      .map((i) => i.id),
+    trips: trips.filter((t) => (t.travelers ?? []).includes(id)).map((t) => t.id)
+  };
+}
+
+export async function createPerson(pool: Pool, p: PersonCreateRequest): Promise<peopleQ.PersonRow> {
+  if (await peopleQ.getById(pool, p.id)) throw new ApiError(409, 'person_exists');
+  await peopleQ.insert(pool, p);
+  return (await peopleQ.getById(pool, p.id))!;
+}
+
+export async function updatePerson(
+  pool: Pool,
+  id: string,
+  patch: PersonPatchRequest
+): Promise<peopleQ.PersonRow> {
+  const existing = await peopleQ.getById(pool, id);
+  if (!existing) throw new ApiError(404, 'person_not_found');
+  const { archived, ...fields } = patch;
+  const { archived: wasArchived, ...current } = existing;
+  const next: Person = { ...current, ...fields };
+  await peopleQ.replace(pool, next, archived ?? wasArchived);
+  return (await peopleQ.getById(pool, id))!;
+}
+
+/** Deletes a person nothing refers to; otherwise archives them (past trips keep them). */
+export async function deletePerson(
+  pool: Pool,
+  id: string
+): Promise<{ deleted: true } | { archived: true; used_by: PersonUsage }> {
+  const existing = await peopleQ.getById(pool, id);
+  if (!existing) throw new ApiError(404, 'person_not_found');
+  const usage = await personUsage(pool, id);
+  if (usage.items.length + usage.trips.length === 0) {
+    await peopleQ.deleteById(pool, id);
+    return { deleted: true };
+  }
+  const { archived: _a, ...p } = existing;
+  await peopleQ.replace(pool, p, true);
+  return { archived: true, used_by: usage };
 }

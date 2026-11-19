@@ -1,21 +1,23 @@
 import type { Condition } from '$lib/schemas/condition.js';
 import strings from '$lib/strings.js';
 
-export function formatCondition(cond: Condition): string {
+/** names: person id → display name, for {person} conditions (falls back to the id). */
+export function formatCondition(cond: Condition, names?: ReadonlyMap<string, string>): string {
+  const sub = (c: Condition) => formatCondition(c, names);
   if (cond === true) return strings.condition.always;
   if (typeof cond === 'string') {
     return strings.condition.param_active.replace('{id}', cond);
   }
   if ('and' in cond) {
     if (cond.and.length === 0) return strings.condition.always;
-    return cond.and.map(formatCondition).join(strings.condition.and_join);
+    return cond.and.map(sub).join(strings.condition.and_join);
   }
   if ('or' in cond) {
     if (cond.or.length === 0) return strings.condition.always;
-    return cond.or.map(formatCondition).join(strings.condition.or_join);
+    return cond.or.map(sub).join(strings.condition.or_join);
   }
   if ('not' in cond) {
-    return strings.condition.not_prefix + formatCondition(cond.not);
+    return strings.condition.not_prefix + sub(cond.not);
   }
   if ('eq' in cond) {
     return strings.condition.eq
@@ -35,6 +37,12 @@ export function formatCondition(cond: Condition): string {
   }
   if ('includes_shabbat' in cond) {
     return strings.condition.includes_shabbat;
+  }
+  if ('person' in cond) {
+    return strings.condition.person.replace('{name}', names?.get(cond.person) ?? cond.person);
+  }
+  if ('kind' in cond) {
+    return strings.condition.kind.replace('{kind}', strings.people.kinds[cond.kind]);
   }
   return JSON.stringify(cond);
 }

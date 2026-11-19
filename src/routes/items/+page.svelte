@@ -2,6 +2,7 @@
   import type { PageData } from './$types.js';
   import type { Item } from '$lib/client/api.js';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import { formatScope } from '$lib/util/format-scope.js';
   import { formatCondition } from '$lib/util/format-condition.js';
   import { formatQuantity } from '$lib/util/format-quantity.js';
   import { conditionParamIds } from '$lib/util/condition-params.js';
@@ -100,8 +101,8 @@
                     <span class="name">{item.display_name}</span>
                     <span class="id ltr-number">{item.id}</span>
                   </span>
-                  <span class="meta">{formatQuantity(item.quantity)}</span>
-                  <span class="meta">{formatCondition(item.include_when)}</span>
+                  <span class="meta">{formatQuantity(item.quantity)} · {formatScope(item, data.names)}</span>
+                  <span class="meta">{formatCondition(item.include_when, data.names)}</span>
                 </a>
               </li>
             {/each}

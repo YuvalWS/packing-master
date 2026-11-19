@@ -8,6 +8,8 @@ import {
   ItemCreateRequest,
   ItemPatchRequest,
   ParameterCreateRequest,
+  PersonCreateRequest,
+  PersonPatchRequest,
   ParameterPatchRequest,
   PreviewRequest,
   TemplateCreateRequest,
@@ -29,10 +31,51 @@ export interface Endpoint {
   bodyType?: string;
   example?: unknown;
   returns: string;
-  tag: 'catalog' | 'catalog editing' | 'trips' | 'trip items' | 'backups' | 'system';
+  tag: 'people' | 'catalog' | 'catalog editing' | 'trips' | 'trip items' | 'backups' | 'system';
 }
 
 export const ENDPOINTS: Endpoint[] = [
+  {
+    method: 'GET',
+    path: '/api/people',
+    tag: 'people',
+    summary: 'The family: who can come on trips, with their kind (adult, kid, baby).',
+    notes: 'Archived people are hidden unless ?include_archived=1.',
+    returns: '{ people: [{ id, display_name, kind, sort_order, archived }] }'
+  },
+  {
+    method: 'POST',
+    path: '/api/people',
+    tag: 'people',
+    summary: 'Add a family member.',
+    notes: 'id: a new snake_case ASCII id. display_name in Hebrew. kind: adult, kid or baby.',
+    body: PersonCreateRequest,
+    example: { id: 'baby', display_name: '<Hebrew name>', kind: 'baby', sort_order: 30 },
+    returns: '201 { person }'
+  },
+  {
+    method: 'GET',
+    path: '/api/people/{id}',
+    tag: 'people',
+    summary: 'One person and what refers to them (items tied to them, trips they are on).',
+    returns: '{ person, used_by: { items: string[], trips: number[] } }'
+  },
+  {
+    method: 'PATCH',
+    path: '/api/people/{id}',
+    tag: 'people',
+    summary: 'Rename a person, change their kind (the baby grew up), reorder, or archive / restore.',
+    body: PersonPatchRequest,
+    example: { kind: 'kid' },
+    returns: '{ person }'
+  },
+  {
+    method: 'DELETE',
+    path: '/api/people/{id}',
+    tag: 'people',
+    summary: 'Remove a person: deleted if nothing refers to them, otherwise archived (past trips keep them).',
+    returns: '{ deleted: true } or { archived: true, used_by }'
+  },
   {
     method: 'GET',
     path: '/api/parameters',
@@ -67,8 +110,8 @@ export const ENDPOINTS: Endpoint[] = [
     method: 'GET',
     path: '/api/catalog',
     tag: 'catalog',
-    summary: 'The whole live catalog (parameters, items, templates) in one response.',
-    returns: '{ parameters, items, templates }'
+    summary: 'The whole live catalog (parameters, items, templates, people) in one response.',
+    returns: '{ parameters, items, templates, people }'
   },
   {
     method: 'GET',
@@ -76,8 +119,8 @@ export const ENDPOINTS: Endpoint[] = [
     tag: 'catalog',
     summary: 'List the item catalog with each item\'s inclusion rule and quantity formula.',
     notes:
-      'include_when and quantity use the rules language in /llms.txt. Archived items are hidden unless ?include_archived=1.',
-    returns: '{ items: [{ id, display_name, category, default_bag, is_shared, is_optional, is_kit, kit_contents, include_when, quantity, notes, archived }] }'
+      'include_when, quantity and per / split / person_id use the rules language in /llms.txt. Archived items are hidden unless ?include_archived=1.',
+    returns: '{ items: [{ id, display_name, category, default_bag, per, split, person_id, is_optional, is_kit, kit_contents, include_when, quantity, notes, archived }] }'
   },
   {
     method: 'GET',
@@ -99,7 +142,8 @@ export const ENDPOINTS: Endpoint[] = [
       display_name: '<Hebrew name>',
       category: 'baby',
       default_bag: 'main_bag',
-      include_when: 'env_baby',
+      per: 'baby',
+      include_when: true,
       quantity: { per_n_days: { n: 2, min: 1 } }
     },
     returns: '201 { item }'
@@ -112,7 +156,7 @@ export const ENDPOINTS: Endpoint[] = [
     notes:
       'Send only the fields to change; null clears an optional field. id cannot change. archived:false restores an archived item.',
     body: ItemPatchRequest,
-    example: { include_when: { all_params: ['env_baby', 'env_cold'] }, quantity: { fixed: 2 } },
+    example: { person_id: null, per: 'person', split: true },
     returns: '{ item }'
   },
   {
@@ -187,7 +231,7 @@ export const ENDPOINTS: Endpoint[] = [
     tag: 'catalog editing',
     summary: 'Dry-run a rule: would this item be on this trip, and how many? Writes nothing.',
     notes:
-      'Give item_id (a saved item) or item (a draft, same shape as POST /api/items), plus trip_id or start_date + end_date + parameters.',
+      'Give item_id (a saved item) or item (a draft, same shape as POST /api/items), plus trip_id or start_date + end_date + parameters (+ travelers, default everyone). rows shows each row the item would get.',
     body: PreviewRequest,
     example: {
       item: { id: 'draft', display_name: 'x', include_when: { any_param: ['env_baby'] }, quantity: { per_day: 6 } },
@@ -196,7 +240,7 @@ export const ENDPOINTS: Endpoint[] = [
       parameters: ['accom_hosting', 'env_baby']
     },
     returns:
-      '{ included, count, active_parameters, derived: { days, weekdays, weekends, shabbat_count, has_shabbat, long_trip, short_trip } }'
+      '{ included, count, rows: [{ person_id, count }], travelers, active_parameters, derived: { days, weekdays, weekends, shabbat_count, has_shabbat, long_trip, short_trip } }'
   },
   {
     method: 'GET',
@@ -211,14 +255,15 @@ export const ENDPOINTS: Endpoint[] = [
     tag: 'trips',
     summary: 'Create a trip; its packing list is generated from the catalog rules.',
     notes:
-      'parameters = the template\'s default_parameters plus any changes, exactly one accommodation parameter. name is optional (the UI shows a default).',
+      'parameters = the template\'s default_parameters plus any changes, exactly one accommodation parameter. travelers = person ids coming (omit for everyone). name is optional (the UI shows a default).',
     body: TripCreateRequest,
     example: {
       template_id: 'tpl_example',
       start_date: '2026-11-20',
       end_date: '2026-11-22',
       destination: 'Grandparents',
-      parameters: ['accom_hosting', 'env_car']
+      parameters: ['accom_hosting', 'env_car'],
+      travelers: ['owner', 'baby']
     },
     returns: '201 { trip, items: [trip item rows], derived: { days, has_shabbat, ... } }'
   },
@@ -228,18 +273,18 @@ export const ENDPOINTS: Endpoint[] = [
     tag: 'trips',
     summary: 'A trip with its full packing list (the main read for "what do I still need to pack").',
     notes:
-      'Each item has row_id, item_id (null for free-text items), display_name, category, default_bag, count, is_checked, is_manual, notes, kit_contents. kit_components lists checked kit parts.',
+      'Each item has row_id, item_id (null for free-text items), person_id / person_name (null on shared rows), display_name, category, default_bag, count, is_checked, is_manual, notes, kit_contents. A per-person item has one row per traveler. trip.travelers lists who is coming. kit_components lists checked kit parts.',
     returns: '{ trip, items: [...], kit_components: [...] }'
   },
   {
     method: 'PATCH',
     path: '/api/trips/{id}',
     tag: 'trips',
-    summary: 'Change trip settings (dates, parameters, name...) and re-run the rules.',
+    summary: 'Change trip settings (dates, parameters, travelers, name...) and re-run the rules.',
     notes:
       'New items are added and counts updated right away (counts the user edited are kept). Items that no longer apply are NOT deleted: they come back in diff.to_be_removed. Show them to the user, and only after they agree, delete them with POST /api/trips/{id}/regenerate.',
     body: TripPatchRequest,
-    example: { end_date: '2026-11-23', parameters: ['accom_hosting', 'env_car', 'env_cold'] },
+    example: { end_date: '2026-11-23', travelers: ['owner'] },
     returns: '{ trip, diff: { added: [...], updated: [...], to_be_removed: [{ row_id, item_id, display_name, count, is_checked }] } }'
   },
   {
@@ -263,16 +308,16 @@ export const ENDPOINTS: Endpoint[] = [
     path: '/api/trips/{id}/regenerate',
     tag: 'trips',
     summary: 'Confirm removals proposed by a settings PATCH or a reapply (diff.to_be_removed).',
-    notes: 'Only rule-generated items can be removed this way; manual items are refused.',
+    notes: 'Prefer row_id (from to_be_removed). {item_id} alone removes every rule-generated row of that item; add person_id for one person. Manual items are refused.',
     body: RegenerateRequest,
-    example: { remove_item_keys: [{ item_id: 'sunscreen' }, { row_id: 42 }] },
+    example: { remove_item_keys: [{ row_id: 42 }, { item_id: 'sunscreen' }] },
     returns: '{ deleted: number }'
   },
   {
     method: 'POST',
     path: '/api/trips/{id}/items',
     tag: 'trip items',
-    summary: 'Add an item to a trip: a catalog item by item_id, or free text by display_name.',
+    summary: 'Add an item to a trip: a catalog item by item_id (optionally for one person_id on the trip), or free text by display_name.',
     notes: 'Added items are manual: the rules engine never changes or removes them. 409 if the catalog item is already on the list.',
     body: TripItemAddRequest,
     example: { display_name: 'Baby carrier', count: 1, notes: 'in the car' },
@@ -284,7 +329,7 @@ export const ENDPOINTS: Endpoint[] = [
     tag: 'trip items',
     summary: 'Check/uncheck an item, change its count, notes or bag split.',
     notes:
-      '{key} is the catalog item_id (e.g. toothbrush) or the numeric row_id (needed for free-text items). Setting count marks it as user-edited, so later rule runs keep it.',
+      '{key} is the numeric row_id (always works), the catalog item_id when the item has a single row on the trip, or item_id:person_id. 409 ambiguous_item_key lists the row ids otherwise. Setting count marks it as user-edited, so later rule runs keep it.',
     body: TripItemPatchRequest,
     example: { is_checked: true },
     returns: '{ item }'
@@ -300,7 +345,7 @@ export const ENDPOINTS: Endpoint[] = [
     method: 'POST',
     path: '/api/trips/{id}/items/{item_id}/components/{component_id}',
     tag: 'trip items',
-    summary: 'Toggle the checked state of one part of a kit item.',
+    summary: 'Toggle the checked state of one part of a kit item ({item_id}:{person_id} for a per-person kit).',
     returns: '{ component: { kit_item_id, component_id, is_checked } }'
   },
   {
@@ -468,15 +513,16 @@ export function llmsTxt(version: string): string {
     '',
     '- **Parameters** describe a trip: one `accommodation` (e.g. hosting, hotel, camping), any number of `environment` (abroad, cold, car...) and `day_plans` (hiking, swimming...). `derived_*` ones (has Shabbat, long/short trip) come from the dates automatically.',
     '- **Templates** are named parameter presets. Start a trip from the closest template.',
+    '- **People** are the family (adult, kid or baby). Each trip lists its `travelers`; a new trip takes everyone unless told otherwise.',
     '- **Catalog items** carry a rule (`include_when`) and a quantity formula; a trip\'s list is generated from them. The catalog is editable through the API; the live database is its source of truth.',
-    '- **Trip items** are the rows of one trip\'s list: `count`, `is_checked`, `notes`. Address them by catalog `item_id` or by numeric `row_id` (free-text items only have a row_id).',
+    '- **Trip items** are the rows of one trip\'s list: `count`, `is_checked`, `notes`. A per-person item has one row per traveler (`person_id`, `person_name`). Address rows by numeric `row_id`; `item_id` works only for an item with a single row.',
     '- **Manual items** (`is_manual: true`) were added by hand; rules never touch them.',
     '',
     '## Common tasks',
     '',
-    '1. Plan a trip: `GET /api/templates` and `GET /api/parameters`, then `POST /api/trips` with dates (YYYY-MM-DD) and `parameters` (the template\'s `default_parameters` adjusted). Read the list back with `GET /api/trips/{id}`.',
+    '1. Plan a trip: `GET /api/templates`, `GET /api/parameters` and `GET /api/people`, then `POST /api/trips` with dates (YYYY-MM-DD), `parameters` (the template\'s `default_parameters` adjusted) and `travelers` (who is coming). Read the list back with `GET /api/trips/{id}`.',
     '2. What is left to pack: `GET /api/trips/{id}` and filter `items` where `is_checked` is false; group by `category` or `default_bag`.',
-    '3. Mark packed: `PATCH /api/trips/{id}/items/{item_id or row_id}` with `{"is_checked": true}`.',
+    '3. Mark packed: `PATCH /api/trips/{id}/items/{row_id}` with `{"is_checked": true}`.',
     '4. Something missing: `POST /api/trips/{id}/items` with `{"item_id": "..."}` for a catalog item or `{"display_name": "...", "count": 1}` for anything else.',
     '5. Plans changed: `PATCH /api/trips/{id}` with the new dates/parameters. Additions apply at once; `diff.to_be_removed` lists items that no longer fit. Ask the user, then `POST /api/trips/{id}/regenerate` with `{"remove_item_keys": [{"item_id": "..."}]}` for the ones they agree to drop.',
     '6. Before anything risky or a batch of catalog edits: `POST /api/backups`.',
@@ -498,7 +544,15 @@ export function llmsTxt(version: string): string {
     '- `{"eq": ["path", value]}`: a value in the trip `extras` (or one of the numbers above) equals `value`.',
     '- Derived parameters, set from the dates: `derived_has_shabbat`, `derived_long_trip` (14+ days), `derived_short_trip` (2 days or fewer).',
     '',
-    'Quantities (`quantity`); `days` counts both the first and the last day:',
+    '- `{"person": "<id>"}`: that person is coming. `{"kind": "baby"}`: at least one traveler of that kind (adult, kid, baby).',
+    '',
+    'Who an item is for (rows and multiplication):',
+    '',
+    '- `per`: `family` (default: once per trip, one shared row), `person` (every traveler), `adult`, `kid` or `baby` (every traveler of that kind). No matching traveler: the item is left out.',
+    '- `split` (default true): one row per matching traveler, each with the quantity (socks: 4 for each person). `split: false` sums into one shared row (food: 2 per person per day, one row for everyone).',
+    '- `person_id`: the item belongs to that one person (the baby\'s bottle, someone\'s glasses): one row with their name, only when they come. It overrides `per`.',
+    '',
+    'Quantities (`quantity`, per row before `split: false` sums them); `days` counts both the first and the last day:',
     '',
     '- `{"fixed": 2}`: always 2.',
     '- `{"per_day": 6}`: 6 per day (3-day trip: 18).',

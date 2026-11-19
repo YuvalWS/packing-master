@@ -7,7 +7,9 @@ function mapRow(r: RowDataPacket): Item {
     display_name: r.display_name,
     category: r.category ?? undefined,
     default_bag: r.default_bag ?? undefined,
-    is_shared: Boolean(r.is_shared),
+    per: r.per,
+    split: Boolean(r.split),
+    person_id: r.person_id ?? undefined,
     is_optional: Boolean(r.is_optional),
     is_kit: Boolean(r.is_kit),
     kit_contents: r.kit_contents ?? undefined,
@@ -18,7 +20,7 @@ function mapRow(r: RowDataPacket): Item {
   return ItemSchema.parse(raw);
 }
 
-const SELECT_COLS = `id, display_name, category, default_bag, is_shared, is_optional, is_kit,
+const SELECT_COLS = `id, display_name, category, default_bag, per, split, person_id, is_optional, is_kit,
                      kit_contents, include_when, quantity, notes`;
 
 /** Active (non-archived) items: what trips are generated from. */
@@ -53,7 +55,9 @@ function columns(item: Item): (string | boolean | null)[] {
     item.display_name,
     item.category ?? null,
     item.default_bag ?? null,
-    item.is_shared,
+    item.per,
+    item.split,
+    item.person_id ?? null,
     item.is_optional,
     item.is_kit,
     item.kit_contents ? JSON.stringify(item.kit_contents) : null,
@@ -66,16 +70,16 @@ function columns(item: Item): (string | boolean | null)[] {
 export async function insert(pool: Pool, item: Item): Promise<void> {
   await pool.execute(
     `INSERT INTO items
-       (id, display_name, category, default_bag, is_shared, is_optional, is_kit,
+       (id, display_name, category, default_bag, per, split, person_id, is_optional, is_kit,
         kit_contents, include_when, quantity, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [item.id, ...columns(item)]
   );
 }
 
 export async function replace(pool: Pool, item: Item, archived: boolean): Promise<void> {
   await pool.execute(
-    `UPDATE items SET display_name = ?, category = ?, default_bag = ?, is_shared = ?,
+    `UPDATE items SET display_name = ?, category = ?, default_bag = ?, per = ?, split = ?, person_id = ?,
        is_optional = ?, is_kit = ?, kit_contents = ?, include_when = ?, quantity = ?, notes = ?,
        archived_at = IF(?, COALESCE(archived_at, CURRENT_TIMESTAMP), NULL)
      WHERE id = ?`,
