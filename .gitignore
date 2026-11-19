@@ -39,3 +39,6 @@ Thumbs.db
 # Logs
 npm-debug.log*
 *.log
+
+# Production env
+deploy/.env

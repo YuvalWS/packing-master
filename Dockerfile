@@ -12,22 +12,26 @@ COPY . .
 EXPOSE 5173
 CMD ["npm", "run", "dev"]
 
-# ---- build stage (stub for phase 4) ----
+# ---- build stage ----
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
-RUN npm run build
+RUN npm run build && npm prune --omit=dev --no-audit --no-fund
 
-# ---- runtime stage (stub for phase 4) ----
+# ---- runtime stage ----
+# Production image used by deploy/compose.yml. Migrations run on start (RUN_MIGRATIONS=1).
 FROM node:20-alpine AS runtime
 WORKDIR /app
-ENV NODE_ENV=production
+ENV NODE_ENV=production PORT=3000 RUN_MIGRATIONS=1
 COPY --from=build /app/build ./build
 COPY --from=build /app/node_modules ./node_modules
-COPY package.json ./
+COPY --from=build /app/package.json ./
+COPY --from=build /app/migrations ./migrations
+USER node
 EXPOSE 3000
+HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5   CMD wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1
 CMD ["node", "build"]
 
 # ---- e2e stage ----
