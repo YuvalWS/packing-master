@@ -19,8 +19,10 @@ DEPLOY_KEY=/root/.ssh/packing-master_deploy
 SVC_USER=packing-master
 NODE_MAJOR=22
 
-msg() { printf '\e[1;34m==>\e[0m %s\n' "$*"; }
-die() { printf '\e[1;31merror:\e[0m %s\n' "$*" >&2; exit 1; }
+# Colors only on a terminal: the web UI shows update.log as plain text.
+if [[ -t 1 ]]; then B=$'\e[1;34m' R=$'\e[1;31m' N=$'\e[0m'; else B='' R='' N=''; fi
+msg() { printf '%s==>%s %s\n' "$B" "$N" "$*"; }
+die() { printf '%serror:%s %s\n' "$R" "$N" "$*" >&2; exit 1; }
 
 [[ $EUID -eq 0 ]] || die "run as root"
 command -v apt-get >/dev/null || die "this installer needs Debian or Ubuntu (apt-get)"
@@ -92,7 +94,7 @@ EOF
 fi
 chown root:"$SVC_USER" "$ENV_FILE"
 chmod 0640 "$ENV_FILE"
-# Write stdin to a file via rename: \`update\` runs while this script regenerates it, and bash
+# Write stdin to a file via rename: `update` runs while this script regenerates it, and bash
 # reads a running script incrementally, so the old file must stay intact.
 put() { local tmp; tmp=$(mktemp "$1.XXXX"); cat >"$tmp"; chmod "${2:-0644}" "$tmp"; mv -f "$tmp" "$1"; }
 envget() { sed -n "s/^$1=//p" "$ENV_FILE" | tail -1; }
@@ -117,13 +119,17 @@ EOF
 
 msg "Building $(git -C "$APP_DIR" log -1 --format='%h %cs %s') (a minute or two)"
 systemctl stop packing-master 2>/dev/null || true
-(
+BUILD_LOG=$DATA_DIR/build.log
+if ! (
   cd "$APP_DIR"
   npm ci --no-audit --no-fund --loglevel=error
-  npm run build --silent
+  npm run build
   npm prune --omit=dev --no-audit --no-fund --loglevel=error
   npm cache clean --force --loglevel=error
-)
+) >"$BUILD_LOG" 2>&1; then
+  tail -40 "$BUILD_LOG" >&2
+  die "build failed (full output: $BUILD_LOG)"
+fi
 
 # ---- services -------------------------------------------------------------------------
 put /etc/systemd/system/packing-master.service <<EOF
