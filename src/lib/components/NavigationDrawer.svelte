@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { X, Backpack, Package, LayoutTemplate } from '@lucide/svelte';
+  import { X, Backpack, Package, LayoutTemplate, Settings } from '@lucide/svelte';
   import { focusTrap } from '$lib/actions/focus-trap.js';
   import strings from '$lib/strings.js';
 
@@ -28,7 +28,8 @@
   const links = [
     { href: '/', label: strings.nav.trips, icon: Backpack },
     { href: '/items', label: strings.nav.items, icon: Package },
-    { href: '/templates', label: strings.nav.templates, icon: LayoutTemplate }
+    { href: '/templates', label: strings.nav.templates, icon: LayoutTemplate },
+    { href: '/system', label: strings.nav.system, icon: Settings }
   ];
 
   function isActive(href: string): boolean {

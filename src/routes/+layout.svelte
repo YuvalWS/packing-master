@@ -21,6 +21,7 @@
     if (pathname === '/' || pathname.startsWith('/trips')) return strings.nav.trips;
     if (pathname.startsWith('/items')) return strings.nav.items;
     if (pathname.startsWith('/templates')) return strings.nav.templates;
+    if (pathname.startsWith('/system')) return strings.nav.system;
     return strings.app.title;
   }
 
