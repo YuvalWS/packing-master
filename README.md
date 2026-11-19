@@ -67,6 +67,7 @@ The e2e suite drives every key flow (empty list, new-trip, packing-check, kit ex
 | `docker compose run --rm app npm run seed:local`       | Load local personal catalog into dev DB       |
 | `docker compose run --rm app npm run extract:excel`    | Convert source spreadsheet → YAML in `seed/local/` |
 | `docker compose run --rm app npm run backup:dev`       | Back up the dev DB to `.data/backups/` (upload it to a deploy to restore) |
+| `docker compose run --rm app npm run catalog:pull -- <url>` | Write a deployed install's live catalog to `seed/local/*.yaml` |
 | `docker compose down -v`                               | Tear down and wipe dev DB volume              |
 
 ## Deploy: Proxmox LXC (LAN)
@@ -116,6 +117,11 @@ The UI's JSON API is the integration surface; nothing is UI-only.
 - `GET /api` — endpoint index with JSON schemas and examples.
 - `GET /api/openapi.json` — OpenAPI 3.1, for tool-calling clients.
 
+Agents can manage trips and the catalog itself: items with their rules and quantities,
+templates and parameters (`POST/PATCH/DELETE /api/items|templates|parameters`), dry-run a
+rule with `POST /api/catalog/preview`, and push catalog changes into an existing trip with
+`POST /api/trips/{id}/reapply`. `/llms.txt` documents the rules language.
+
 All three are rendered from `src/lib/api/catalog.ts`; a unit test fails if a route under
 `src/routes/api/` is missing from it. Behind Cloudflare Access, give an agent a service
 token and have it send `CF-Access-Client-Id` / `CF-Access-Client-Secret`.
@@ -123,7 +129,7 @@ token and have it send `CF-Access-Client-Id` / `CF-Access-Client-Secret`.
 ## Data layout
 
 - `seed/sample/` — generic placeholder catalog (committed). Useful for fresh-clone bootstraps and documenting YAML shape.
-- `seed/local/` — your personal catalog (**gitignored**). Produced by `extract:excel` or hand-edited. Also holds `extract-config.yaml` (the spreadsheet mapping, see below) and `extract-report.txt`. Use bag ids from the `view.bags` map in `src/lib/strings.json` (`main_bag`, `small_bag`, `suitcase`, `carry_on`) so the UI can render Hebrew bag names; unknown ids fall back to the raw id.
+- `seed/local/` — your personal catalog (**gitignored**). Once deployed, the live database is the source of truth and `npm run catalog:pull` refreshes these files from it; originally produced by `extract:excel`. Also holds `extract-config.yaml` (the spreadsheet mapping, see below) and `extract-report.txt`. Use bag ids from the `view.bags` map in `src/lib/strings.json` (`main_bag`, `small_bag`, `suitcase`, `carry_on`) so the UI can render Hebrew bag names; unknown ids fall back to the raw id.
 - `tests/fixtures/` — pure mock data used by unit, integration, and e2e tests.
 - Source spreadsheet — stays outside the repo. Drop it into `./.data/source.xlsx` (gitignored) and `PACKING_EXCEL_PATH=/data/source.xlsx` reaches it from the container.
 
@@ -173,7 +179,7 @@ src/
     trips/new              template picker → details form
     trips/[id]             packing list (categorized/by-bag, check toggle, kit expand, manual add)
     trips/[id]/settings    parameter editor with regen-diff modal
-    items, items/[id]      read-only catalog
+    items, items/[id]      catalog (read-only UI; editable through the API)
     templates, templates/[id]  read-only templates
     api/...                trips, items, templates, parameters
 tests/

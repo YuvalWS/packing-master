@@ -101,6 +101,13 @@ What still wants a human pass:
   a re-run of `extract:excel` overwrites `items.yaml`, so fold durable corrections
   back into the config (`aliases`, `quantity_rules`, `item_overrides`).
 
+### 2b. Catalog write API (done November 2026, DESIGN.md §10.0)
+
+The live DB is now the catalog's source of truth; an AI agent edits it over the API.
+`npm run catalog:pull -- <url>` exports it back to `seed/local/`. Items used by trips are
+archived (`items.archived_at`, migration 0003) instead of deleted. The editor UI below
+should be a client of these endpoints, not a new write path.
+
 ### 3. Phase 5 — items editor, easy mode (DESIGN.md §10.1)
 
 The read-only catalog is done; the editor is the next feature phase. Easy mode is a

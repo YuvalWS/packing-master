@@ -637,6 +637,29 @@ Blocks correspond 1:1 to DSL operators (`and`, `or`, `not`, `eq`, `gte`, `any_pa
 
 **Phase 2 status:** easy mode is the minimum; advanced mode can defer to phase 3 if it proves complex. JSON-textarea fallback is acceptable as a temporary stopgap in phase 2 if the advanced builder slips.
 
+### 10.0 Catalog API — the editor's backend (approved and built November 2026)
+
+Approved by the user 2026-11-19 so an AI agent can manage items, rules, templates and parameters before any editor UI exists. The UI editor (10.1/10.2) will call the same endpoints.
+
+**Source of truth flips to the database.** Once an install is live, the catalog in its database is authoritative; the agent and (later) the editor write there. The YAML in `seed/` becomes (a) the bootstrap for a fresh database and (b) an export: `GET /api/catalog` returns the live catalog in the seed shape and `npm run catalog:pull -- <base-url>` writes it to `seed/local/*.yaml`. `extract:excel` is a one-time importer; re-running it after go-live would overwrite exported edits.
+
+**Endpoints** (all validated with the same Zod schemas as the seed files):
+
+| Endpoint | Behaviour |
+|---|---|
+| `POST /api/items` | Create. 409 `item_exists` if the id is taken (also when archived). |
+| `PATCH /api/items/:id` | Partial update; the merged item must validate as a whole. `id` is immutable. `archived: false` un-archives. |
+| `DELETE /api/items/:id` | Hard delete when no trip uses the item; otherwise **archive** it (`archived_at`), so past trips keep their rows. Archived items are not generated and are hidden from `GET /api/items` unless `?include_archived=1`. |
+| `POST /api/templates`, `PATCH`/`DELETE /api/templates/:id` | CRUD. Deleting sets `trips.template_id` to NULL (existing FK). |
+| `POST /api/parameters`, `PATCH`/`DELETE /api/parameters/:id` | CRUD for accommodation / environment / day_plans. `is_singleton` follows the category (accommodation only). Derived parameters are read-only. Delete is refused (409 `parameter_in_use`) while any item rule, template or trip references it. |
+| `POST /api/catalog/preview` | Dry run: for a saved `item_id` or an unsaved `item`, and a trip (`trip_id`, or dates + parameters), returns `included`, `count` and the derived values. Writes nothing. |
+| `POST /api/trips/:id/reapply` | Re-runs the current catalog on a trip with its own settings. Same contract as a settings PATCH: additions and count updates apply (user-edited counts and manual rows untouched), removals come back as `to_be_removed` for `POST /api/trips/:id/regenerate` after confirmation. |
+| `GET /api/catalog` | The whole live catalog (parameters, items, templates) in the seed-file shape. |
+
+**Integrity rules.** Every parameter id in an item's `include_when` and in a template's `default_parameters` must exist (400 `unknown_parameter`); templates may not list derived parameters. Catalog edits never touch existing trips by themselves; a trip picks them up only through `reapply` (or a settings change), so rule 3 (no silent destruction) holds.
+
+**Safety.** No per-write backups (daily + pre-update + pre-restore already exist); agents are told to `POST /api/backups` before bulk edits.
+
 ### 10.3 Other phase-2+ items (parking lot)
 
 - Pre-trip tasks (separate table & screen)

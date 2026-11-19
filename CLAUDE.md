@@ -13,7 +13,7 @@ Two docs to read before any non-trivial work:
   - **"Layers" are renamed "parameters"** and split into 3 categories (accommodation = pick one, environment = multi, day plans = multi). DSL operators `any_layer`/`all_layers` become `any_param`/`all_params`. A `seed/*/parameters.yaml` carries the catalog of parameters with Hebrew labels.
   - Trip name is optional (defaults to "{days} days at {accommodation}", rendered in Hebrew via the strings file).
   - Optional items (`?`) are a real concept with a separate counter.
-  - Items catalog is **read-only in phase 1**; full editor is phase 2.
+  - The catalog has a full write API (DESIGN.md §10.0, November 2026) used by AI agents; the editor UI is still to come (§10.1/§10.2).
 
 **The phased implementation plan lives in DESIGN.md §11.** Work top-to-bottom; do not skip phases.
 
@@ -81,7 +81,7 @@ docker compose run --rm app npm run db:migrate
 - **Personal seed YAMLs** (`seed/local/`) — NOT committed (gitignored); this is the real catalog reviewed by the user.
 - **Raw Excel** — NOT committed. Lives outside the repo; drop a copy at `./.data/source.xlsx` (gitignored) and the extractor reads it via the `PACKING_EXCEL_PATH` env var.
 - **MySQL data volumes** — NOT committed.
-- The extraction script (`src/lib/seed/extract-from-excel.ts`) reads the Excel and emits YAML into `seed/local/`; run it when the user wants to refresh the catalog.
+- The extraction script (`src/lib/seed/extract-from-excel.ts`) reads the Excel and emits YAML into `seed/local/`. It was the one-time importer: now that the live catalog is edited through the API, re-running it would overwrite those edits in `seed/local/` (it never touches the deployed DB).
 
 `.gitignore` must include: `*.dump`, `*.sql.gz`, `/data/`, `/.data/` (holds `backups/` from `npm run backup:dev`), `.env`, `.env.local`, `deploy/.env`, `seed/local/`, and any local DB dumps the user creates.
 
@@ -123,7 +123,7 @@ Run via `docker compose run --rm app npm test` (see README for the full suite ta
 ## Workflow rules
 
 1. **Design before code.** When the user asks for a new feature or screen, write the design change (in `DESIGN.md` or a sub-doc) and confirm before implementing.
-2. **YAML is the catalog source of truth.** Edits to items/templates happen in the seed YAML first, then re-seeded into `db_dev`. The DB is a derived index.
+2. **The deployed database is the catalog's source of truth** (changed November 2026, DESIGN.md §10.0). Agents and the future editor write through the catalog API. `seed/` YAML is the bootstrap for a fresh DB and an export: `npm run catalog:pull -- <base-url>` writes the live catalog into `seed/local/`. Never re-seed a deployed DB from YAML.
 3. **Never silently destroy user trip edits.** All regeneration must surface a diff (added / updated / to-be-removed) and require explicit confirmation before deleting `trip_items` rows. See `context.md` § "Regeneration safety".
 4. **`is_manual=true` rows are sacred.** The rules engine never modifies them.
 5. **The five most recently updated spreadsheet tabs are authoritative** for default quantities and naming (see context.md § "Source data"). Other tabs contribute unique items only.
@@ -215,7 +215,8 @@ Run via `docker compose run --rm app npm test` (see README for the full suite ta
 - [x] **Phase 2** — API surface
 - [x] **Phase 3** — UI screens (incl. a UI/UX gap-closure pass vs. DESIGN.md §4–§7 — July 2026; deliberate divergences listed in DESIGN.md §12)
 - [x] **Phase 4** — deploy to a Proxmox LXC (Nov 2026): helper script, native installer, update button with rollback, backups, agent API docs. Remote access via Cloudflare Tunnel + Access is still to do.
-- [ ] **Phase 5+** — items editor (easy mode → advanced block builder), tasks list, shopping list
+- [x] **Catalog write API** (DESIGN.md §10.0) — items/templates/parameters CRUD, rule preview, reapply-to-trip, export; archived items.
+- [ ] **Phase 5+** — items editor UI (easy mode → advanced block builder) on top of that API, tasks list, shopping list
 
 See [DESIGN.md §11 — Implementation order & testing plan](DESIGN.md) for the detailed per-step breakdown, and `HANDOFF.md` for the current what's-next.
 
