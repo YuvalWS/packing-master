@@ -23,8 +23,8 @@ Two docs to read before any non-trivial work:
 |------------------------------------|------------------------------------------------------------------------|
 | App framework                      | SvelteKit (server + frontend in one app)                               |
 | Language                           | TypeScript (strict)                                                    |
-| Database                           | MySQL 8                                                                |
-| Hosting                            | Hostinger (Node + MySQL plan); auth handled at hosting layer           |
+| Database                           | MySQL 8 in dev/test; MariaDB in production (both tested — see below)   |
+| Hosting                            | Proxmox LXC on the LAN (native Node 22 + MariaDB, no Docker); later a Cloudflare Tunnel + Cloudflare Access in front |
 | MySQL driver                       | `mysql2` (promise API)                                                 |
 | Migrations runner                  | `umzug` with `mysql2`-backed storage — chosen, done. No custom migrator. |
 | YAML parsing                       | `js-yaml`                                                              |
@@ -83,7 +83,17 @@ docker compose run --rm app npm run db:migrate
 - **MySQL data volumes** — NOT committed.
 - The extraction script (`src/lib/seed/extract-from-excel.ts`) reads the Excel and emits YAML into `seed/local/`; run it when the user wants to refresh the catalog.
 
-`.gitignore` must include: `*.dump`, `*.sql.gz`, `/data/`, `/.data/`, `.env`, `.env.local`, `seed/local/`, and any local DB dumps the user creates before uploading to Hostinger.
+`.gitignore` must include: `*.dump`, `*.sql.gz`, `/data/`, `/.data/` (holds `backups/` from `npm run backup:dev`), `.env`, `.env.local`, `deploy/.env`, `seed/local/`, and any local DB dumps the user creates.
+
+## Production (Proxmox LXC)
+
+See README § "Deploy: Proxmox LXC". `proxmox/packing-master.sh` runs on the Proxmox host and creates a small unprivileged Debian LXC; `proxmox/install.sh` installs Node.js + MariaDB natively under systemd, builds the app, and installs `update`, the update/check path units and a daily backup timer. Keep the LXC lightweight: **no Docker inside it.**
+
+- **MariaDB compatibility is a requirement.** JSON columns come back as strings from MariaDB; the pool's `typeCast` parses the names listed in `src/lib/db/json-columns.ts` — add any new JSON column there. Avoid MySQL-8-only SQL (`INSERT … AS alias`, `->>`, CTE-heavy tricks). Before changing SQL, run the integration suite against a `mariadb:11.8` container as `DB_TEST_HOST`.
+- **Migrations run on server start** (`RUN_MIGRATIONS=1`, `src/hooks.server.ts`); an update needs no manual step.
+- **The update button never runs privileged code in the app.** The app writes request files into `CONTROL_DIR`; root-side systemd path units do the work and write `installed.json` / `latest.json` / `update.log` back. `update` backs up first and rolls back to the previous commit if the new build or health check fails.
+- **Backups** (`src/lib/server/backup.ts`) are gzipped JSON snapshots of every table; a new table must be added to `BACKUP_TABLES`.
+- **The API is the agent surface.** Every `/api` route must be listed in `src/lib/api/catalog.ts` (a unit test enforces it); `/llms.txt`, `/api` and `/api/openapi.json` are rendered from it.
 
 ## Testing requirements
 
@@ -118,7 +128,7 @@ Run via `docker compose run --rm app npm test` (see README for the full suite ta
 4. **`is_manual=true` rows are sacred.** The rules engine never modifies them.
 5. **The five most recently updated spreadsheet tabs are authoritative** for default quantities and naming (see context.md § "Source data"). Other tabs contribute unique items only.
 6. **Two users max.** Don't add user-scoping, RBAC, sharding, caching layers, queues, or other infra for scale. Pick the boring path.
-7. **Hostinger handles auth.** Don't write login screens, sessions, or a users table for v1.
+7. **No auth in the app.** LAN-only for now; remote access will go through Cloudflare Access (service tokens for agents). Don't write login screens, sessions, or a users table for v1.
 8. **Privacy guards before every commit** — see README § "Privacy / personal data". No personal identifying data and no Hebrew (outside the strings file) in the committed tree.
 
 ## File map (current)
@@ -129,7 +139,9 @@ Run via `docker compose run --rm app npm test` (see README for the full suite ta
 ├── DESIGN.md                       UI/UX spec + implementation plan (§11) + divergences (§12)
 ├── context.md                      product spec (DSL, schema, API, decisions) — historical, DESIGN.md wins
 ├── HANDOFF.md                      current status + what's-next
-├── README.md                       how to run (Docker commands)
+├── README.md                       how to run (Docker commands) + deploy + agent API
+├── proxmox/                        packing-master.sh (Proxmox host helper) + install.sh (LXC installer/updater)
+├── deploy/                         compose.yml: optional production stack for any Docker host
 ├── docker-compose.yml
 ├── Dockerfile
 ├── .dockerignore
@@ -202,7 +214,7 @@ Run via `docker compose run --rm app npm test` (see README for the full suite ta
 - [x] **Phase 1** — data layer + rules engine + tests
 - [x] **Phase 2** — API surface
 - [x] **Phase 3** — UI screens (incl. a UI/UX gap-closure pass vs. DESIGN.md §4–§7 — July 2026; deliberate divergences listed in DESIGN.md §12)
-- [ ] **Phase 4** — Hostinger deploy (`build`/`runtime` Dockerfile stages exist as unverified stubs; no deploy docs, dump, or live smoke yet)
+- [x] **Phase 4** — deploy to a Proxmox LXC (Nov 2026): helper script, native installer, update button with rollback, backups, agent API docs. Remote access via Cloudflare Tunnel + Access is still to do.
 - [ ] **Phase 5+** — items editor (easy mode → advanced block builder), tasks list, shopping list
 
 See [DESIGN.md §11 — Implementation order & testing plan](DESIGN.md) for the detailed per-step breakdown, and `HANDOFF.md` for the current what's-next.
@@ -211,7 +223,7 @@ See [DESIGN.md §11 — Implementation order & testing plan](DESIGN.md) for the 
 
 - Don't add tasks list, shopping list, optional/priority levels, joint-list UI, weight tracking, offline support, holiday detection beyond Shabbat, multi-language, or trip sharing. All deferred to post-v1. See `context.md` § "Out of scope for v1".
 - Don't introduce React, Tailwind plugins, or other heavy frontend deps before checking with the user. Default to SvelteKit's built-ins.
-- Don't write a custom auth layer. Hostinger handles it.
+- Don't write a custom auth layer. Access control belongs to Cloudflare Access (later) / the LAN (now).
 - Don't commit Excel files, MySQL dumps, `.env` files, or anything from `seed/local/`.
 - Don't install anything on the host — every command runs through `docker compose`.
 - Don't put Hebrew anywhere except `src/lib/strings.json` and `seed/local/`.

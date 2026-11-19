@@ -653,6 +653,8 @@ Blocks correspond 1:1 to DSL operators (`and`, `or`, `not`, `eq`, `gte`, `any_pa
 Six numbered phases. Each phase ends in a runnable, demoable artifact. **Reuse libraries everywhere** (see CLAUDE.md § "Tech stack").
 
 > **Status (July 2026):** Phases 0–3 are **complete**, including a UI/UX gap-closure pass that brought the screens in line with §4–§7 (per-row actions menu, regen-modal fixes, search/filters, derived-param display, upcoming/past trip sections, a11y sweep). Deliberate divergences are recorded in §12. **Phase 4 is the next milestone** — the Dockerfile `build`/`runtime` stages exist only as stubs. Phase 5+ not started. See `HANDOFF.md`.
+>
+> **Update (November 2026):** Phase 4 is **complete** for the LAN. The deploy target changed from Hostinger to a Proxmox LXC (see Phase 4 below and §12).
 
 ### Phase 0 — environment (no app code yet)
 
@@ -718,10 +720,13 @@ Build screens in the order they unblock manual end-to-end testing:
 
 | Step | Deliverable |
 |------|-------------|
-| 4.1 | Production `Dockerfile` target verified |
-| 4.2 | Hostinger Node app config documented in README (entry point, env vars) |
-| 4.3 | Dump `db_dev` → `.sql` file (gitignored), upload to Hostinger MySQL manually |
-| 4.4 | Smoke-test the live site |
+| 4.1 | Proxmox helper `proxmox/packing-master.sh`: creates a small unprivileged Debian LXC (1 GB RAM, 4 GB disk), read-only GitHub deploy key for the private repo |
+| 4.2 | `proxmox/install.sh`: Node.js 22 + MariaDB natively under systemd (no Docker), build, `update` command with pre-update backup and automatic rollback; documented in README |
+| 4.3 | Data transfer: `npm run backup:dev` → upload + restore in System settings (replaces the manual `.sql` dump) |
+| 4.4 | System settings screen (`/system`): version, check for updates, Update button, update log, backups (create / upload / download / restore / delete) |
+| 4.5 | Agent API: `/llms.txt`, `/api`, `/api/openapi.json` from one registry |
+| 4.6 | Smoke-test the live site (rehearsed in a Debian 13 + systemd container: install, restore, update, rollback) |
+| 4.7 | Later: Cloudflare Tunnel + Cloudflare Access for remote access |
 
 ### Phase 5+ — see §10 "Phase 2 plan"
 
@@ -735,7 +740,7 @@ Items editor (easy mode → advanced block builder), tasks list, shopping list, 
 - **E2E tests** (Playwright) — only golden flows: create trip, check items, edit settings with/without removals.
 - **Manual verification** — UI screens on a real phone-sized viewport once each phase 3 step lands.
 
-CI considerations are out of scope for v1 (personal project, Hostinger doesn't run CI for us). Local `docker compose run --rm app npm test` is the gate.
+CI considerations are out of scope for v1 (personal project). Local `docker compose run --rm app npm test` is the gate.
 
 ## 12. Implemented divergences from this spec (July 2026)
 
@@ -752,3 +757,5 @@ Where the implementation deliberately departs from §§4–7, and why. Anything 
 | 7 | §4.6 footer "Source: seed/items.yaml" | Generic footer pointing at the `seed/` directory | The literal path no longer exists (`seed/sample/` + gitignored `seed/local/`) |
 | 8 | §6 skeletons on initial page loads | No skeletons; thin top progress bar on client navigations >150ms | All screens are SSR-loaded — first paint already contains data, so skeletons would never show |
 | 9 | — | `derive()` (with @hebcal/core) runs client-side in new-trip/settings for live date hints | ~100KB gz added to the bundle; accepted for a personal app. Alternative if it ever matters: a tiny `GET /api/derived?start&end` endpoint |
+| 10 | §3 navigation: trips, items, templates | A fourth drawer entry, **System settings** (`/system`): version + Update button + update log, backups, links to the agent API docs | Added with the Proxmox deploy (Nov 2026); updates and backups need a home in the UI. Its controls follow the trip-menu patterns (inline confirm, toasts) |
+| 11 | §11 Phase 4: Hostinger | Proxmox LXC on the LAN, Node + MariaDB natively, update button with rollback; Cloudflare Tunnel + Access later | User's own infrastructure; a small native LXC keeps the footprint low. MariaDB is kept compatible alongside MySQL 8 (tests run on both) |
