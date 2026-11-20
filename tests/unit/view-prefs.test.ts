@@ -10,28 +10,33 @@ beforeEach(() => {
 
 describe('view-prefs', () => {
   it('returns defaults when nothing is stored', () => {
-    expect(loadPrefs(1)).toEqual({ mode: 'category', checkedToBottom: false });
+    expect(loadPrefs(1)).toEqual({ mode: 'category', checkedToBottom: false, hiddenOwners: [] });
   });
 
   it('round-trips through localStorage', () => {
-    savePrefs(7, { mode: 'bag', checkedToBottom: true });
-    expect(loadPrefs(7)).toEqual({ mode: 'bag', checkedToBottom: true });
+    savePrefs(7, { mode: 'bag', checkedToBottom: true, hiddenOwners: ['', 'owner'] });
+    expect(loadPrefs(7)).toEqual({ mode: 'bag', checkedToBottom: true, hiddenOwners: ['', 'owner'] });
   });
 
   it('isolates per trip id', () => {
-    savePrefs(7, { mode: 'bag', checkedToBottom: true });
-    savePrefs(8, { mode: 'category', checkedToBottom: false });
+    savePrefs(7, { mode: 'bag', checkedToBottom: true, hiddenOwners: [] });
+    savePrefs(8, { mode: 'category', checkedToBottom: false, hiddenOwners: [] });
     expect(loadPrefs(7).mode).toBe('bag');
     expect(loadPrefs(8).mode).toBe('category');
   });
 
   it('falls back to defaults on malformed JSON', () => {
     localStorage.setItem('pm:trip:7:view', 'not json{');
-    expect(loadPrefs(7)).toEqual({ mode: 'category', checkedToBottom: false });
+    expect(loadPrefs(7)).toEqual({ mode: 'category', checkedToBottom: false, hiddenOwners: [] });
   });
 
   it('coerces invalid mode values to category', () => {
     localStorage.setItem('pm:trip:7:view', JSON.stringify({ mode: 'something_else', checkedToBottom: 1 }));
-    expect(loadPrefs(7)).toEqual({ mode: 'category', checkedToBottom: true });
+    expect(loadPrefs(7)).toEqual({ mode: 'category', checkedToBottom: true, hiddenOwners: [] });
+  });
+
+  it('keeps only string owner ids', () => {
+    localStorage.setItem('pm:trip:7:view', JSON.stringify({ hiddenOwners: ['owner', 3, null, ''] }));
+    expect(loadPrefs(7).hiddenOwners).toEqual(['owner', '']);
   });
 });

@@ -1,7 +1,7 @@
 import type { ZodTypeAny } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { TripCreateRequest, TripPatchRequest } from '$lib/schemas/api/trip.js';
-import { TripItemAddRequest, TripItemPatchRequest } from '$lib/schemas/api/trip-item.js';
+import { TripCheckRequest, TripItemAddRequest, TripItemPatchRequest } from '$lib/schemas/api/trip-item.js';
 import { RegenerateRequest } from '$lib/schemas/api/regenerate.js';
 import { CreateBackupRequest } from '$lib/schemas/api/backup.js';
 import {
@@ -340,6 +340,16 @@ export const ENDPOINTS: Endpoint[] = [
     tag: 'trip items',
     summary: 'Delete a row, manual or rule-generated. A rule-generated item can come back on a later settings change or reapply. Ask the user first.',
     returns: '{ deleted: true }'
+  },
+  {
+    method: 'POST',
+    path: '/api/trips/{id}/check',
+    tag: 'trip items',
+    summary: 'Check or uncheck many rows at once (e.g. a whole category: read the trip, pick the rows, send their row ids).',
+    notes: 'Row ids of other trips are ignored. updated is the number of rows matched.',
+    body: TripCheckRequest,
+    example: { row_ids: [41, 42, 43], is_checked: true },
+    returns: '{ updated: number }'
   },
   {
     method: 'POST',

@@ -13,6 +13,7 @@ import {
   DELETE as tripItemDelete
 } from '../../../src/routes/api/trips/[id]/items/[key]/+server.js';
 import { PATCH as tripPatch } from '../../../src/routes/api/trips/[id]/+server.js';
+import { POST as tripCheck } from '../../../src/routes/api/trips/[id]/check/+server.js';
 import * as tripItemsQ from '../../../src/lib/db/queries/trip-items.js';
 
 let s: SeededPool;
@@ -208,5 +209,43 @@ describe('DELETE /api/trips/[id]/items/[key]', () => {
         })
       )
     ).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+describe('POST /api/trips/[id]/check (DESIGN.md 15.1)', () => {
+  const check = (tripId: number, body: unknown) =>
+    tripCheck(buildEvent(s.pool, { method: 'POST', params: { id: String(tripId) }, body }));
+
+  it('checks and unchecks many rows in one call', async () => {
+    const t = await createTrip();
+    const ids = (await tripItemsQ.listByTrip(s.pool, t.trip.id)).slice(0, 3).map((r) => r.id);
+    const res = await check(t.trip.id, { row_ids: ids, is_checked: true });
+    expect(((await expectJson(res)) as { updated: number }).updated).toBe(3);
+    const rows = await tripItemsQ.listByTrip(s.pool, t.trip.id);
+    expect(rows.filter((r) => r.is_checked).map((r) => r.id).sort()).toEqual([...ids].sort());
+
+    await check(t.trip.id, { row_ids: ids.slice(0, 2), is_checked: false });
+    const after = await tripItemsQ.listByTrip(s.pool, t.trip.id);
+    expect(after.filter((r) => r.is_checked).map((r) => r.id)).toEqual([ids[2]]);
+  });
+
+  it('ignores row ids of another trip', async () => {
+    const a = await createTrip();
+    const b = await createTrip();
+    const [other] = await tripItemsQ.listByTrip(s.pool, b.trip.id);
+    const res = await check(a.trip.id, { row_ids: [other!.id], is_checked: true });
+    expect(((await expectJson(res)) as { updated: number }).updated).toBe(0);
+    const rows = await tripItemsQ.listByTrip(s.pool, b.trip.id);
+    expect(rows.some((r) => r.is_checked)).toBe(false);
+  });
+
+  it('rejects an empty list and 404s for an unknown trip', async () => {
+    const t = await createTrip();
+    await expect(check(t.trip.id, { row_ids: [], is_checked: true })).rejects.toMatchObject({
+      status: 400
+    });
+    await expect(check(999999, { row_ids: [1], is_checked: true })).rejects.toMatchObject({
+      status: 404
+    });
   });
 });

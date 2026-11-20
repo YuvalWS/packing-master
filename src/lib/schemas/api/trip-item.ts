@@ -40,3 +40,12 @@ export const TripItemAddRequest = z.union([
   TripItemAddFreeTextRequest
 ]);
 export type TripItemAddRequest = z.infer<typeof TripItemAddRequest>;
+
+/** Check or uncheck many rows at once (DESIGN.md 15.1). */
+export const TripCheckRequest = z
+  .object({
+    row_ids: z.array(z.number().int().positive()).min(1).max(2000),
+    is_checked: z.boolean()
+  })
+  .strict();
+export type TripCheckRequest = z.infer<typeof TripCheckRequest>;

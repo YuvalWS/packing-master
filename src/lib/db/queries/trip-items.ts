@@ -360,3 +360,18 @@ export async function adoptAutoItems(
   }
   return adopted;
 }
+
+/** Sets is_checked on the given rows of one trip; ids of other trips are ignored. */
+export async function setChecked(
+  pool: Pool,
+  tripId: number,
+  rowIds: readonly number[],
+  isChecked: boolean
+): Promise<number> {
+  if (rowIds.length === 0) return 0;
+  const [res] = await pool.query<ResultSetHeader>(
+    'UPDATE trip_items SET is_checked = ? WHERE trip_id = ? AND id IN (?)',
+    [isChecked, tripId, [...rowIds]]
+  );
+  return res.affectedRows;
+}

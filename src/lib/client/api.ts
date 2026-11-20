@@ -216,6 +216,7 @@ export interface Api {
     body: PatchTripItemBody
   ): Promise<{ item: DbTripItemRow }>;
   deleteTripItem(tripId: number, key: string | number): Promise<{ deleted: true }>;
+  checkTripItems(tripId: number, rowIds: number[], isChecked: boolean): Promise<{ updated: number }>;
   toggleKitComponent(
     tripId: number,
     itemId: string,
@@ -263,6 +264,11 @@ export function makeApi(fetcher: Fetcher = fetch): Api {
         'DELETE',
         `/api/trips/${tripId}/items/${encodeURIComponent(String(key))}`
       ),
+    checkTripItems: (tripId, rowIds, isChecked) =>
+      request<{ updated: number }>(fetcher, 'POST', `/api/trips/${tripId}/check`, {
+        row_ids: rowIds,
+        is_checked: isChecked
+      }),
     toggleKitComponent: (tripId, itemId, componentId) =>
       request<{ component: KitComponentRow }>(
         fetcher,

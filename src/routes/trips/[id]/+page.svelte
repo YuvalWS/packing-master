@@ -6,6 +6,7 @@
   import PackingListRow from '$lib/components/PackingListRow.svelte';
   import KitComponentRow from '$lib/components/KitComponentRow.svelte';
   import CategoryGroup from '$lib/components/CategoryGroup.svelte';
+  import OwnerFilter, { type OwnerChip } from '$lib/components/OwnerFilter.svelte';
   import ProgressCounter from '$lib/components/ProgressCounter.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import Toast from '$lib/components/Toast.svelte';
@@ -62,22 +63,62 @@
   );
   let viewMode = $state<ViewMode>('category');
   let checkedToBottom = $state(false);
+  let hiddenOwners = $state<Set<string>>(new Set());
 
   $effect(() => {
     const prefs = loadPrefs(data.trip.id);
     viewMode = prefs.mode;
     checkedToBottom = prefs.checkedToBottom;
+    hiddenOwners = new Set(prefs.hiddenOwners);
   });
+
+  function persistPrefs() {
+    savePrefs(data.trip.id, { mode: viewMode, checkedToBottom, hiddenOwners: [...hiddenOwners] });
+  }
 
   function setViewMode(next: ViewMode) {
     viewMode = next;
-    savePrefs(data.trip.id, { mode: viewMode, checkedToBottom });
+    persistPrefs();
   }
 
   function setCheckedToBottom(next: boolean) {
     checkedToBottom = next;
-    savePrefs(data.trip.id, { mode: viewMode, checkedToBottom });
+    persistPrefs();
   }
+
+  function toggleOwner(id: string) {
+    const next = new Set(hiddenOwners);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    hiddenOwners = next;
+    persistPrefs();
+  }
+
+  // One chip per owner of rows on this trip: travelers in trip order, shared last (DESIGN.md 15.2).
+  const owners = $derived.by((): OwnerChip[] => {
+    const byId = new Map<string, OwnerChip>();
+    for (const it of items) {
+      const id = it.person_id ?? '';
+      let chip = byId.get(id);
+      if (!chip) {
+        chip = {
+          id,
+          name: id === '' ? strings.owners.shared : (it.person_name ?? id),
+          done: 0,
+          total: 0,
+          hidden: hiddenOwners.has(id)
+        };
+        byId.set(id, chip);
+      }
+      if (!it.is_optional) {
+        chip.total += 1;
+        if (it.is_checked) chip.done += 1;
+      }
+    }
+    const order = data.trip.travelers ?? [];
+    const rank = (id: string) => (id === '' ? Number.MAX_SAFE_INTEGER : order.indexOf(id) === -1 ? order.length : order.indexOf(id));
+    return [...byId.values()].sort((a, b) => rank(a.id) - rank(b.id) || a.name.localeCompare(b.name));
+  });
 
   $effect(() => {
     items = data.items.filter((it) => !hiddenRowIds.has(it.row_id));
@@ -133,6 +174,7 @@
   const visibleItems = $derived.by(() => {
     const q = searchQuery.trim().toLowerCase();
     return items.filter((it) => {
+      if (hiddenOwners.has(it.person_id ?? '')) return false;
       if (q && !it.display_name.toLowerCase().includes(q)) return false;
       if (filterMode === 'required') return !it.is_optional && !it.is_checked;
       if (filterMode === 'optional') return it.is_optional && !it.is_checked;
@@ -215,6 +257,56 @@
     toastAction = null;
     toastTone = tone;
     toastMsg = msg;
+  }
+
+  function groupDone(rows: DisplayRow[]): { done: number; total: number } {
+    const seen = new Map<number, boolean>();
+    for (const r of rows) seen.set(r.item.row_id, r.item.is_checked);
+    let done = 0;
+    for (const checked of seen.values()) if (checked) done += 1;
+    return { done, total: seen.size };
+  }
+
+  function setCheckedLocally(rowIds: Set<number>, isChecked: boolean) {
+    items = items.map((it) => (rowIds.has(it.row_id) ? { ...it, is_checked: isChecked } : it));
+  }
+
+  async function sendChecked(rowIds: number[], isChecked: boolean): Promise<boolean> {
+    try {
+      await makeApi().checkTripItems(data.trip.id, rowIds, isChecked);
+      await invalidate(`trip:${data.trip.id}`);
+      return true;
+    } catch {
+      setCheckedLocally(new Set(rowIds), !isChecked);
+      showToast(strings.packing_list.save_failed, 'danger');
+      return false;
+    }
+  }
+
+  // Checks the visible rows of a group, or unchecks them when all are checked (DESIGN.md 15.1).
+  async function checkGroup(rows: DisplayRow[]) {
+    const unique = new Map<number, EnrichedItem>();
+    for (const r of rows) unique.set(r.item.row_id, r.item);
+    const all = [...unique.values()];
+    const target = all.some((it) => !it.is_checked);
+    const changed = all.filter((it) => it.is_checked !== target).map((it) => it.row_id);
+    if (changed.length === 0) return;
+    setCheckedLocally(new Set(changed), target);
+    if (!(await sendChecked(changed, target))) return;
+    toastTone = 'info';
+    toastMsg = (target ? strings.packing_list.checked_many : strings.packing_list.unchecked_many).replace(
+      '{count}',
+      String(changed.length)
+    );
+    toastAction = {
+      label: strings.row_menu.undo,
+      onClick: () => {
+        toastMsg = null;
+        toastAction = null;
+        setCheckedLocally(new Set(changed), !target);
+        void sendChecked(changed, !target);
+      }
+    };
   }
 
   function setHidden(rowId: number, hidden: boolean) {
@@ -459,6 +551,10 @@
     </button>
   </div>
 
+  {#if owners.length > 1}
+    <OwnerFilter {owners} onToggle={toggleOwner} />
+  {/if}
+
   {#if searchOpen}
     <!-- svelte-ignore a11y_autofocus -->
     <input
@@ -491,7 +587,13 @@
 {:else}
   <div class="groups">
     {#each grouped as [rawKey, rows] (rawKey)}
-      <CategoryGroup title={groupLabel(rawKey)} count={rows.length}>
+      {@const progress = groupDone(rows)}
+      <CategoryGroup
+        title={groupLabel(rawKey)}
+        count={progress.total}
+        done={progress.done}
+        onCheckAll={() => checkGroup(rows)}
+      >
         {#each rows as row (row.key)}
           {@const item = row.item}
           {@const expanded = expandedKits.has(item.row_id)}

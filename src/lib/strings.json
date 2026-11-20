@@ -86,7 +86,12 @@
     "filter_all": "הכל",
     "filter_required": "חובה שנותרו",
     "filter_optional": "רשות שנותרו",
-    "filter_hint": "סנן לפי מצב סימון"
+    "filter_hint": "סנן לפי מצב סימון",
+    "check_group": "סמן הכול ב{name}",
+    "uncheck_group": "הסר את הסימון מהכול ב{name}",
+    "checked_many": "סומנו {count} פריטים",
+    "unchecked_many": "בוטל הסימון של {count} פריטים",
+    "group_progress": "{done} מתוך {total} סומנו"
   },
   "trip_header": {
     "shabbat_one": "שבת",
@@ -337,5 +342,11 @@
     "yom_hazikaron": "יום הזיכרון",
     "yom_haatzmaut": "יום העצמאות",
     "yom_yerushalayim": "יום ירושלים"
+  },
+  "owners": {
+    "label": "הצג לפי אדם",
+    "shared": "משותף",
+    "show": "הצג את הפריטים של {name}",
+    "hide": "הסתר את הפריטים של {name}"
   }
 }
