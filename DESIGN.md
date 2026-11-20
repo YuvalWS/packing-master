@@ -867,3 +867,25 @@ Cancelling the modal changes nothing (the items stay and will be listed again ne
 ### 14.4 Tests
 
 Unit: holy days across Shabbat + Yom Tov (3-day chag), holiday overlap with the erev rule, the new condition operators. Integration: deleting a rule-generated row, keep / pack via regenerate. Component: the modal's per-item choices and apply-to-all; the stepper's delete at count 1.
+
+## 15. Packing by category and by person (approved November 2026)
+
+Decided with the user on 2026-11-20. Both are trip-screen features; nothing changes in the rules or the data model.
+
+### 15.1 Check a whole category
+
+- Each group header (a category, or a bag in the by-bag view) shows **done/total** for the rows currently visible in it and a **check-all** button.
+- The button checks every visible unchecked row in the group: the person filter (15.2), search and the required/optional filter all apply, so hidden rows are never touched. When every visible row is already checked, the button unchecks them instead.
+- It applies at once, then shows a toast with **Undo** for 5 seconds; Undo restores exactly the rows it changed.
+- In the by-bag view a row split across bags is checked as a whole (a check is per row, not per bag).
+- API: `POST /api/trips/:id/check` with `{ "row_ids": [..], "is_checked": true }` → `{ updated }`, one statement for all rows. Agents use it the same way ("pack all the toiletries": read the trip, pick the rows, send their ids).
+
+### 15.2 Show or hide each person's rows
+
+- When a trip's rows belong to two or more owners (each traveler, plus **Shared** for rows with no person), a row of chips appears under the progress counter: one per owner, in the trip's traveler order with Shared last, each showing that owner's **done/total** (required rows, the same rule as the main counter).
+- Tapping a chip hides or shows that owner's rows. It is a view filter only: nothing is checked, unchecked or deleted. The main counter still counts the whole trip.
+- Hidden owners are remembered per trip on this device, next to the by-bag and checked-to-bottom preferences (`localStorage`), and their chips stay visible, greyed and struck through, so a hidden person is never forgotten.
+
+### 15.3 Tests
+
+Integration: the bulk check endpoint (checks, unchecks, ignores other trips' rows). Unit: view prefs keep hidden owners. Component: the group header's count and check-all; the person chips' counts and toggle. E2E: check a category and undo; hide a person and see their rows go while the counts stay.
